@@ -1,6 +1,8 @@
 #ifndef __CAMERA_THREAD_H__
 #define __CAMERA_THREAD_H__
 
+#include <optional>
+
 #include <libcamera/camera_manager.h>
 #include <libcamera/camera.h>
 
