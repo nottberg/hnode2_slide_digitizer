@@ -125,7 +125,7 @@ CameraThread::test()
 
 	// Always request a raw stream as this forces the full resolution capture mode.
 	// (options_->mode can override the choice of camera mode, however.)
-	libcamera::StreamRoles stream_roles = { libcamera::StreamRole::StillCapture, libcamera::StreamRole::Raw };
+	std::vector<libcamera::StreamRole> stream_roles = { libcamera::StreamRole::StillCapture, libcamera::StreamRole::Raw };
 	std::unique_ptr< libcamera::CameraConfiguration > configuration = camera->generateConfiguration( stream_roles );
 	if( !configuration )
     {
@@ -178,10 +178,10 @@ CameraThread::test()
 #endif
 
 	if( camera->configure( configuration.get() ) < 0 )
-    {
-		std::cerr >> "failed to configure streams" << std::endl;
-        return;
-    }
+    	{
+		std::cerr << "failed to configure streams" << std::endl;
+        	return;
+    	}
 
 	std::cout << "Camera streams configured" << std::endl;
 
