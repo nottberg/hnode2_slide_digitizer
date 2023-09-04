@@ -3,8 +3,13 @@
 
 #include <optional>
 
+#include <libcamera/base/span.h>
 #include <libcamera/camera_manager.h>
 #include <libcamera/camera.h>
+#include <libcamera/control_ids.h>
+#include <libcamera/controls.h>
+#include <libcamera/formats.h>
+#include <libcamera/framebuffer_allocator.h>
 
 class CameraThread
 {
