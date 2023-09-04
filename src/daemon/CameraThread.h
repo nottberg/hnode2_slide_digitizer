@@ -2,6 +2,7 @@
 #define __CAMERA_THREAD_H__
 
 #include <libcamera/camera_manager.h>
+#include <libcamera/camera.h>
 
 class CameraThread
 {
