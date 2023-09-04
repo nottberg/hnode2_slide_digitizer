@@ -31,12 +31,11 @@ CameraThread::test()
   	std::cout << "Opening camera..." << std::endl;
 
 	m_camMgr = std::make_unique<libcamera::CameraManager>();
+
+    std::cout << "libcamera version: " << m_camMgr->version() << std::endl;
+
 	int ret = m_camMgr->start();
 	if (ret)
 		std::cerr << "camera manager failed to start, code " + std::to_string(-ret) << std::endl;
 
-
-    //m_camMgr.start();
-
-    //std::cout << "libcamera version: " << m_camMgr.version() << std::endl;
 }
