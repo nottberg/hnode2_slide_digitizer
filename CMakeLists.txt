@@ -26,6 +26,7 @@ SET( HNSLDIGD_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/hnsldigd.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSlideDigitizerDevice.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/CameraThread.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/JPEGSerializer.cpp
 )
 
 SET(CMAKE_BUILD_TYPE Debug)
@@ -33,6 +34,8 @@ SET(CMAKE_BUILD_TYPE Debug)
 FIND_PACKAGE( Poco REQUIRED Util Foundation Net NetSSL JSON )
 FIND_PACKAGE( HNode2 REQUIRED )
 FIND_PACKAGE( LibCamera REQUIRED )
+FIND_PACKAGE( LibJpeg REQUIRED )
+FIND_PACKAGE( LibExif REQUIRED )
 
 INCLUDE_DIRECTORIES( ${CMAKE_SOURCE_DIR}/src/include ${LibCamera_INCLUDE_DIRS} )
 
@@ -47,6 +50,8 @@ TARGET_LINK_LIBRARIES( hnsldigd PRIVATE
 )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE HNode2::common )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibCamera::common )
+TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibJpeg::common )
+TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibExif::common )
 
 INSTALL( TARGETS hnsldigd DESTINATION ${CMAKE_INSTALL_PREFIX}/sbin COMPONENT daemon )
 

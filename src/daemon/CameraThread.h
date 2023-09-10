@@ -11,6 +11,8 @@
 #include <libcamera/formats.h>
 #include <libcamera/framebuffer_allocator.h>
 
+
+
 class CameraThread
 {
     public:
@@ -19,7 +21,11 @@ class CameraThread
 
         void test();
 
+        void requestComplete( libcamera::Request *request );
+
     private:
+
+        uint64_t seqCnt;
 
         std::unique_ptr<libcamera::CameraManager> m_camMgr;
 };

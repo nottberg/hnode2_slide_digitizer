@@ -178,16 +178,18 @@ CameraThread::test()
 #endif
 
 	if( camera->configure( configuration.get() ) < 0 )
-    	{
-		std::cerr << "failed to configure streams" << std::endl;
-        	return;
-    	}
+    {
+        std::cerr << "failed to configure streams" << std::endl;
+       	return;
+    }
 
 	std::cout << "Camera streams configured" << std::endl;
 
 	std::cout << "=== Available controls ===" << std::endl;
 	for( auto const &[id, info] : camera->controls() )
+    {
 		std::cout << id->name() << ":  " << info.toString() << std::endl;
+    }
 
 	// Next allocate all the buffers we need, mmap them and store them on a free list.
 
@@ -240,17 +242,252 @@ CameraThread::test()
 
 	std::cout << "Still capture setup complete" << std::endl;
 
+    libcamera::ControlList ctrlList( controls::controls );
 
 	//libcamera::ControlList cl;
 	//cl.set(libcamera::controls::AfMode, libcamera::controls::AfModeAuto);
 	//cl.set(libcamera::controls::AfTrigger, libcamera::controls::AfTriggerCancel);
-	//app.SetControls(cl);
-	
+	// Following is app.SetControls(cl);
+	//std::lock_guard<std::mutex> lock(control_mutex_);
+
+	// Add new controls to the stored list. If a control is duplicated,
+	// the value in the argument replaces the previously stored value.
+	// These controls will be applied to the next StartCamera or request.
+	//for (const auto &c : controls)
+	//	ctrlList.set(c.first, c.second);
+
+
+
     // app.StartCamera();
 
-	//else if (app.StillStream())
-	//{
+	// This makes all the Request objects that we shall need.
+	// makeRequests();
+    std::vector< std::unique_ptr< libcamera::Request > > requests;
+
+	auto free_buffers( frame_buffers );
+	while( true )
+	{
+		for( libcamera::StreamConfiguration &config : *configuration )
+		{
+			libcamera::Stream *stream = config.stream();
+			if( stream == configuration->at(0).stream() )
+			{
+				if( free_buffers[ stream ].empty() )
+				{
+					std::cout << "Requests created" << std::endl;
+					return;
+				}
+
+				std::unique_ptr< libcamera::Request > request = camera->createRequest();
+				if( !request )
+                {
+                    std::cerr << "failed to make request" << std::endl;
+                    return;
+                }
+
+				requests.push_back( std::move( request ) );
+			}
+			else if( free_buffers[ stream ].empty() )
+            {
+				std::cerr << "concurrent streams need matching numbers of buffers" << std::endl;
+                return;
+            }
+
+			libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
+			free_buffers[ stream ].pop();
+			if( requests.back()->addBuffer( stream, buffer ) < 0 )
+            {
+				std::cerr << "failed to add buffer to request" << std::endl;
+                return;
+            }
+		}
+	}
+
+#if 0
+	// Build a list of initial controls that we must set in the camera before starting it.
+	// We don't overwrite anything the application may have set before calling us.
+	if (!ctrlList.get(controls::ScalerCrop) && options_->roi_width != 0 && options_->roi_height != 0)
+	{
+		Rectangle sensor_area = *camera_->properties().get(properties::ScalerCropMaximum);
+		int x = options_->roi_x * sensor_area.width;
+		int y = options_->roi_y * sensor_area.height;
+		int w = options_->roi_width * sensor_area.width;
+		int h = options_->roi_height * sensor_area.height;
+		Rectangle crop(x, y, w, h);
+		crop.translateBy(sensor_area.topLeft());
+		LOG(2, "Using crop " << crop.toString());
+		ctrlList.set(controls::ScalerCrop, crop);
+	}
+
+	if (!ctrlList.get(controls::AfWindows) && !ctrlList.get(controls::AfMetering) && options_->afWindow_width != 0 &&
+		options_->afWindow_height != 0)
+	{
+		Rectangle sensor_area = *camera_->properties().get(properties::ScalerCropMaximum);
+		int x = options_->afWindow_x * sensor_area.width;
+		int y = options_->afWindow_y * sensor_area.height;
+		int w = options_->afWindow_width * sensor_area.width;
+		int h = options_->afWindow_height * sensor_area.height;
+		Rectangle afwindows_rectangle[1];
+		afwindows_rectangle[0] = Rectangle(x, y, w, h);
+		afwindows_rectangle[0].translateBy(sensor_area.topLeft());
+		LOG(2, "Using AfWindow " << afwindows_rectangle[0].toString());
+		//activate the AfMeteringWindows
+		ctrlList.set(controls::AfMetering, controls::AfMeteringWindows);
+		//set window
+		ctrlList.set(controls::AfWindows, afwindows_rectangle);
+	}
+
+	// Framerate is a bit weird. If it was set programmatically, we go with that, but
+	// otherwise it applies only to preview/video modes. For stills capture we set it
+	// as long as possible so that we get whatever the exposure profile wants.
+	if (!ctrlList.get(controls::FrameDurationLimits))
+	{
+		if (StillStream())
+			ctrlList.set(controls::FrameDurationLimits,
+						  libcamera::Span<const int64_t, 2>({ INT64_C(100), INT64_C(1000000000) }));
+		else if (!options_->framerate || options_->framerate.value() > 0)
+		{
+			int64_t frame_time = 1000000 / options_->framerate.value_or(DEFAULT_FRAMERATE); // in us
+			ctrlList.set(controls::FrameDurationLimits,
+						  libcamera::Span<const int64_t, 2>({ frame_time, frame_time }));
+		}
+	}
+
+	if (!ctrlList.get(controls::ExposureTime) && options_->shutter)
+		ctrlList.set(controls::ExposureTime, options_->shutter.get<std::chrono::microseconds>());
+	if (!ctrlList.get(controls::AnalogueGain) && options_->gain)
+		ctrlList.set(controls::AnalogueGain, options_->gain);
+	if (!ctrlList.get(controls::AeMeteringMode))
+		ctrlList.set(controls::AeMeteringMode, options_->metering_index);
+	if (!ctrlList.get(controls::AeExposureMode))
+		ctrlList.set(controls::AeExposureMode, options_->exposure_index);
+	if (!ctrlList.get(controls::ExposureValue))
+		ctrlList.set(controls::ExposureValue, options_->ev);
+	if (!ctrlList.get(controls::AwbMode))
+		ctrlList.set(controls::AwbMode, options_->awb_index);
+	if (!ctrlList.get(controls::ColourGains) && options_->awb_gain_r && options_->awb_gain_b)
+		ctrlList.set(controls::ColourGains,
+					  libcamera::Span<const float, 2>({ options_->awb_gain_r, options_->awb_gain_b }));
+	if (!ctrlList.get(controls::Brightness))
+		ctrlList.set(controls::Brightness, options_->brightness);
+	if (!ctrlList.get(controls::Contrast))
+		ctrlList.set(controls::Contrast, options_->contrast);
+	if (!ctrlList.get(controls::Saturation))
+		ctrlList.set(controls::Saturation, options_->saturation);
+	if (!ctrlList.get(controls::Sharpness))
+		ctrlList.set(controls::Sharpness, options_->sharpness);
+
+	// AF Controls, where supported and not already set
+	if (!ctrlList.get(controls::AfMode) && camera_->controls().count(&controls::AfMode) > 0)
+	{
+		int afm = options_->afMode_index;
+		if (afm == -1)
+		{
+			// Choose a default AF mode based on other options
+			if (options_->lens_position || options_->set_default_lens_position || options_->af_on_capture)
+				afm = controls::AfModeManual;
+			else
+				afm = camera_->controls().at(&controls::AfMode).max().get<int>();
+		}
+		ctrlList.set(controls::AfMode, afm);
+	}
+	if (!ctrlList.get(controls::AfRange) && camera_->controls().count(&controls::AfRange) > 0)
+		ctrlList.set(controls::AfRange, options_->afRange_index);
+	if (!ctrlList.get(controls::AfSpeed) && camera_->controls().count(&controls::AfSpeed) > 0)
+		ctrlList.set(controls::AfSpeed, options_->afSpeed_index);
+
+	if (ctrlList.get(controls::AfMode).value_or(controls::AfModeManual) == controls::AfModeAuto)
+	{
+		// When starting a viewfinder or video stream in AF "auto" mode,
+		// trigger a scan now (but don't move the lens when capturing a still).
+		// If an application requires more control over AF triggering, it may
+		// override this behaviour with prior settings of AfMode or AfTrigger.
+		if (!StillStream() && !ctrlList.get(controls::AfTrigger))
+			ctrlList.set(controls::AfTrigger, controls::AfTriggerStart);
+	}
+	else if ((options_->lens_position || options_->set_default_lens_position) &&
+			 camera_->controls().count(&controls::LensPosition) > 0 && !ctrlList.get(controls::LensPosition))
+	{
+		float f;
+		if (options_->lens_position)
+			f = options_->lens_position.value();
+		else
+			f = camera_->controls().at(&controls::LensPosition).def().get<float>();
+		LOG(2, "Setting LensPosition: " << f);
+		ctrlList.set(controls::LensPosition, f);
+	}
+
+	if (options_->flicker_period && !ctrlList.get(controls::AeFlickerMode) &&
+		camera_->controls().find(&controls::AeFlickerMode) != camera_->controls().end() &&
+		camera_->controls().find(&controls::AeFlickerPeriod) != camera_->controls().end())
+	{
+		ctrlList.set(controls::AeFlickerMode, controls::FlickerManual);
+		ctrlList.set(controls::AeFlickerPeriod, options_->flicker_period.get<std::chrono::microseconds>());
+	}
+#endif
+
+	if( camera->start( &ctrlList ) )
+    {
+		std::cerr << "failed to start camera" << std::endl;
+        return;
+    }
+
+	ctrlList.clear();
+
+	bool camera_started = true;
+	uint last_timestamp = 0;
+
+	// post_processor_.Start();
+
+	camera->requestCompleted.connect( this, &CameraThread::requestComplete );
+
+	for( std::unique_ptr< libcamera::Request > &request : requests )
+	{
+		if( camera->queueRequest( request.get() ) < 0 )
+        {
+			std::cerr << "Failed to queue request" << std::endl;
+            return;
+        }
+	}
+
+	std::cout << "Camera started!" << std::endl;
+
+
+
 	//	app.StopCamera();
+	//{
+		// We don't want QueueRequest to run asynchronously while we stop the camera.
+	//	std::lock_guard<std::mutex> lock(camera_stop_mutex_);
+	//	if (camera_started_)
+	//	{
+			if( camera->stop() )
+            {
+				std::cout << "failed to stop camera" << std::endl;
+            }
+
+			//post_processor_.Stop();
+
+			camera_started = false;
+		//}
+	//}
+
+	if( camera )
+		camera->requestCompleted.disconnect( this, &CameraThread::requestComplete );
+
+	// An application might be holding a CompletedRequest, so queueRequest will get
+	// called to delete it later, but we need to know not to try and re-queue it.
+	completed_requests.clear();
+
+	//msg_queue_.Clear();
+
+	requests.clear();
+
+	controls.clear(); // no need for mutex here
+
+	std::cout << "Camera stopped!" << std::endl;
+
+
+
 	//	LOG(1, "Still capture image received");
 	//	save_images(app, completed_request);
 	//	save_metadata(options, completed_request->metadata);
@@ -271,4 +508,38 @@ CameraThread::test()
 	//if (!options_->help)
 	std::cout << "Camera closed" << std::endl;
 
+}
+
+void
+CameraThread::requestComplete( libcamera::Request *request )
+{
+    std::cout << "requestComplete - start" << std::endl;
+
+	if( request->status() == libcamera::Request::RequestCancelled )
+	{
+		// If the request is cancelled while the camera is still running, it indicates
+		// a hardware timeout. Let the application handle this error.
+        std::cerr << "RequestCancelled, hardware timeout" << std::endl;
+		return;
+	}
+
+	libcamera::CompletedRequest *r = new libCamera::CompletedRequest( seqCnt++, request );
+//	libcamera::CompletedRequestPtr payload( r, [this]( libcamera::CompletedRequest *cr ) { this->queueRequest( cr ); });
+//	{
+//		std::lock_guard<std::mutex> lock( completed_requests_mutex_ );
+//		completed_requests_.insert(r);
+//	}
+
+	// We calculate the instantaneous framerate in case anyone wants it.
+	// Use the sensor timestamp if possible as it ought to be less glitchy than
+	// the buffer timestamps.
+//	auto ts = payload->metadata.get(controls::SensorTimestamp);
+//	uint64_t timestamp = ts ? *ts : payload->buffers.begin()->second->metadata().timestamp;
+//	if (last_timestamp_ == 0 || last_timestamp_ == timestamp)
+//		payload->framerate = 0;
+//	else
+//		payload->framerate = 1e9 / (timestamp - last_timestamp_);
+//	last_timestamp_ = timestamp;
+
+//	post_processor_.Process(payload); // post-processor can re-use our shared_ptr
 }
