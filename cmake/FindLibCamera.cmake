@@ -16,7 +16,7 @@ if (LibCamera_COMMON_LIBRARY AND LibCamera_BASE_LIBRARY AND LibCamera_COMMON_INC
 endif()
 
 if(LibCamera_FOUND)
-  set(LibCamera_LIBRARIES ${LibCamera_COMMON_LIBRARY})
+  set(LibCamera_LIBRARIES ${LibCamera_BASE_LIBRARY} ${LibCamera_COMMON_LIBRARY})
   set(LibCamera_INCLUDE_DIRS ${LibCamera_COMMON_INCLUDE_DIRS})
   
   message(STATUS "Found LibCamera include: ${LibCamera_INCLUDE_DIRS}")

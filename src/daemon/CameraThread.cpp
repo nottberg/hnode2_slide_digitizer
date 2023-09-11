@@ -242,7 +242,7 @@ CameraThread::test()
 
 	std::cout << "Still capture setup complete" << std::endl;
 
-    libcamera::ControlList ctrlList( controls::controls );
+    libcamera::ControlList ctrlList( libcamera::controls::controls );
 
 	//libcamera::ControlList cl;
 	//cl.set(libcamera::controls::AfMode, libcamera::controls::AfModeAuto);
@@ -476,13 +476,13 @@ CameraThread::test()
 
 	// An application might be holding a CompletedRequest, so queueRequest will get
 	// called to delete it later, but we need to know not to try and re-queue it.
-	completed_requests.clear();
+	//completed_requests.clear();
 
 	//msg_queue_.Clear();
 
 	requests.clear();
 
-	controls.clear(); // no need for mutex here
+	ctrlList.clear(); // no need for mutex here
 
 	std::cout << "Camera stopped!" << std::endl;
 
@@ -523,7 +523,7 @@ CameraThread::requestComplete( libcamera::Request *request )
 		return;
 	}
 
-	libcamera::CompletedRequest *r = new libCamera::CompletedRequest( seqCnt++, request );
+	CompletedRequest *r = new CompletedRequest( seqCnt++, request );
 //	libcamera::CompletedRequestPtr payload( r, [this]( libcamera::CompletedRequest *cr ) { this->queueRequest( cr ); });
 //	{
 //		std::lock_guard<std::mutex> lock( completed_requests_mutex_ );

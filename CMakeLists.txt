@@ -49,7 +49,7 @@ TARGET_LINK_LIBRARIES( hnsldigd PRIVATE
     ${Poco_JSON_LIBRARY}
 )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE HNode2::common )
-TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibCamera::common )
+TARGET_LINK_LIBRARIES( hnsldigd PRIVATE ${LibCamera_LIBRARIES} )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibJpeg::common )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibExif::common )
 

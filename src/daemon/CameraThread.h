@@ -117,7 +117,7 @@ struct CompletedRequest
                 r->reuse();
         }
         unsigned int sequence;
-        libcamera::BufferMap buffers;
+        libcamera::Request::BufferMap buffers;
         libcamera::ControlList metadata;
         libcamera::Request *request;
         float framerate;
