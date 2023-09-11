@@ -303,6 +303,8 @@ CameraThread::test()
 		}
 	}
 
+    std::cout << "Requests Complete" << std::endl;
+
 #if 0
 	// Build a list of initial controls that we must set in the camera before starting it.
 	// We don't overwrite anything the application may have set before calling us.
@@ -426,6 +428,8 @@ CameraThread::test()
 	}
 #endif
 
+    std::cout << "Pre Camera Start" << std::endl;
+
 	if( camera->start( &ctrlList ) )
     {
 		std::cerr << "failed to start camera" << std::endl;
@@ -439,10 +443,14 @@ CameraThread::test()
 
 	// post_processor_.Start();
 
+    std::cout << "Pre requestCompleted.connect" << std::endl;
+
 	camera->requestCompleted.connect( this, &CameraThread::requestComplete );
 
 	for( std::unique_ptr< libcamera::Request > &request : requests )
 	{
+        std::cout << "Queueing request" << std::endl;
+
 		if( camera->queueRequest( request.get() ) < 0 )
         {
 			std::cerr << "Failed to queue request" << std::endl;
