@@ -265,42 +265,39 @@ CameraThread::test()
     std::vector< std::unique_ptr< libcamera::Request > > requests;
 
 	auto free_buffers( frame_buffers );
-	while( true )
+	for( libcamera::StreamConfiguration &config : *configuration )
 	{
-		for( libcamera::StreamConfiguration &config : *configuration )
+		libcamera::Stream *stream = config.stream();
+		if( stream == configuration->at(0).stream() )
 		{
-			libcamera::Stream *stream = config.stream();
-			if( stream == configuration->at(0).stream() )
+			if( free_buffers[ stream ].empty() )
 			{
-				if( free_buffers[ stream ].empty() )
-				{
-					std::cout << "Requests created" << std::endl;
-					return;
-				}
-
-				std::unique_ptr< libcamera::Request > request = camera->createRequest();
-				if( !request )
-                {
-                    std::cerr << "failed to make request" << std::endl;
-                    return;
-                }
-
-				requests.push_back( std::move( request ) );
+				std::cout << "Requests created" << std::endl;
+				break;
 			}
-			else if( free_buffers[ stream ].empty() )
+
+			std::unique_ptr< libcamera::Request > request = camera->createRequest();
+			if( !request )
             {
-				std::cerr << "concurrent streams need matching numbers of buffers" << std::endl;
+                std::cerr << "failed to make request" << std::endl;
                 return;
             }
 
-			libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
-			free_buffers[ stream ].pop();
-			if( requests.back()->addBuffer( stream, buffer ) < 0 )
-            {
-				std::cerr << "failed to add buffer to request" << std::endl;
-                return;
-            }
+			requests.push_back( std::move( request ) );
 		}
+		else if( free_buffers[ stream ].empty() )
+        {
+    		std::cerr << "concurrent streams need matching numbers of buffers" << std::endl;
+            return;
+        }
+
+        libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
+		free_buffers[ stream ].pop();
+		if( requests.back()->addBuffer( stream, buffer ) < 0 )
+        {
+		    std::cerr << "failed to add buffer to request" << std::endl;
+            return;
+        }
 	}
 
     std::cout << "Requests Complete" << std::endl;
