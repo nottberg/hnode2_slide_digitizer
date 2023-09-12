@@ -140,20 +140,24 @@ CameraThread::test()
 	else if (flags & FLAG_STILL_RGB)
 		configuration->at(0).pixelFormat = libcamera::formats::RGB888;
 	else
-		configuration->at(0).pixelFormat = libcamera::formats::YUV420;
+#endif
+	configuration->at(0).pixelFormat = libcamera::formats::YUV420;
+#if 0    
 	if ((flags & FLAG_STILL_BUFFER_MASK) == FLAG_STILL_DOUBLE_BUFFER)
 		configuration->at(0).bufferCount = 2;
 	else if ((flags & FLAG_STILL_BUFFER_MASK) == FLAG_STILL_TRIPLE_BUFFER)
 		configuration->at(0).bufferCount = 3;
 	else if (options->buffer_count > 0)
 		configuration->at(0).bufferCount = options->buffer_count;
-	if (options->width)
-		configuration->at(0).size.width = options->width;
-	if (options->height)
-		configuration->at(0).size.height = options->height;
-	configuration->at(0).colorSpace = libcamera::ColorSpace::Sycc;
-	configuration->transform = options->transform;
+#endif
+	//if (options->width)
+		configuration->at(0).size.width = 4624; //options->width;
+	//if (options->height)
+		configuration->at(0).size.height = 3472; //options->height;
 
+	configuration->at(0).colorSpace = libcamera::ColorSpace::Sycc;
+	//configuration->transform = options->transform;
+#if 0
 	post_processor.AdjustConfig("still", &configuration->at(0));
 
 	if (options->mode.bit_depth)
