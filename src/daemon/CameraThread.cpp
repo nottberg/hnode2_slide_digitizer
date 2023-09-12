@@ -195,11 +195,14 @@ CameraThread::test()
 
     std::map< libcamera::FrameBuffer *, std::vector< libcamera::Span<uint8_t> > > mapped_buffers;
     std::map< libcamera::Stream *, std::queue< libcamera::FrameBuffer * > > frame_buffers;
+    std::vector< std::unique_ptr< libcamera::Request > > requests;
 
 	libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator( camera );
 	for( libcamera::StreamConfiguration &config : *configuration )
 	{
 		libcamera::Stream *stream = config.stream();
+
+        std::cout << "buffer alloc stream: " << stream->configuration().toString() << std::endl;
 
 		if( allocator->allocate( stream ) < 0 )
         {
@@ -219,11 +222,28 @@ CameraThread::test()
 				if( i == buffer->planes().size() - 1 || plane.fd.get() != buffer->planes()[i + 1].fd.get() )
 				{
 					void *memory = mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
-					mapped_buffers[ buffer.get() ].push_back(	libcamera::Span<uint8_t>( static_cast<uint8_t *>(memory), buffer_size ) );
+					mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(memory), buffer_size ) );
 					buffer_size = 0;
 				}
 			}
 			frame_buffers[ stream ].push( buffer.get() );
+
+			std::unique_ptr< libcamera::Request > request = camera->createRequest();
+			if( !request )
+            {
+                std::cerr << "failed to make request" << std::endl;
+                return;
+            }
+
+			requests.push_back( std::move( request ) );
+
+            //libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
+	    	//free_buffers[ stream ].pop();
+		    if( requests.back()->addBuffer( stream, buffer ) < 0 )
+            {
+		        std::cerr << "failed to add buffer to request" << std::endl;
+                return;
+            }
 		}
 	}
 	
@@ -259,7 +279,7 @@ CameraThread::test()
 
 
     // app.StartCamera();
-
+#if 0
 	// This makes all the Request objects that we shall need.
 	// makeRequests();
     std::vector< std::unique_ptr< libcamera::Request > > requests;
@@ -299,7 +319,7 @@ CameraThread::test()
             return;
         }
 	}
-
+#endif
     std::cout << "Requests Complete" << std::endl;
 
 #if 0
