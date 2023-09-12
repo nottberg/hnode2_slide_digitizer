@@ -1,5 +1,6 @@
 #include <chrono>
 #include <poll.h>
+#include <unistd.h>
 #include <signal.h>
 #include <sys/signalfd.h>
 #include <sys/stat.h>
