@@ -483,7 +483,8 @@ CameraThread::test()
 	std::cout << "Camera started!" << std::endl;
 
 
-
+    sleep(10);
+    
 	//	app.StopCamera();
 	//{
 		// We don't want QueueRequest to run asynchronously while we stop the camera.
