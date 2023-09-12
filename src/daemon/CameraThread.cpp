@@ -484,7 +484,7 @@ CameraThread::test()
 
 
     sleep(10);
-    
+
 	//	app.StopCamera();
 	//{
 		// We don't want QueueRequest to run asynchronously while we stop the camera.
@@ -544,7 +544,7 @@ CameraThread::test()
 void
 CameraThread::requestComplete( libcamera::Request *request )
 {
-    std::cout << "requestComplete - start" << std::endl;
+    std::cout << "requestComplete - start - status: " << request->status() << std::endl;
 
 	if( request->status() == libcamera::Request::RequestCancelled )
 	{
