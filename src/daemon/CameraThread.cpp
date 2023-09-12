@@ -239,7 +239,7 @@ CameraThread::test()
 
             //libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
 	    	//free_buffers[ stream ].pop();
-		    if( requests.back()->addBuffer( stream, buffer ) < 0 )
+		    if( requests.back()->addBuffer( stream, buffer.get() ) < 0 )
             {
 		        std::cerr << "failed to add buffer to request" << std::endl;
                 return;
