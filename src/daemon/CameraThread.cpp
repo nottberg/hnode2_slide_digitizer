@@ -17,6 +17,7 @@
 
 //#include "image/image.hpp"
 
+#include "JPEGSerializer.h"
 #include "CameraThread.h"
 
 CameraThread::CameraThread()
@@ -202,6 +203,8 @@ CameraThread::test()
     std::map< libcamera::FrameBuffer *, std::vector< libcamera::Span<uint8_t> > > mapped_buffers;
     std::map< libcamera::Stream *, std::queue< libcamera::FrameBuffer * > > frame_buffers;
     std::vector< std::unique_ptr< libcamera::Request > > requests;
+	size_t buffer_size = 0;
+	uint8_t *bufPtr = nullptr;
 
 	libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator( camera );
 	for( libcamera::StreamConfiguration &config : *configuration )
@@ -220,15 +223,17 @@ CameraThread::test()
 		{
 			// "Single plane" buffers appear as multi-plane here, but we can spot them because then
 			// planes all share the same fd. We accumulate them so as to mmap the buffer only once.
-			size_t buffer_size = 0;
 			for( unsigned i = 0; i < buffer->planes().size(); i++ )
 			{
 				const libcamera::FrameBuffer::Plane &plane = buffer->planes()[i];
 				buffer_size += plane.length;
 				if( i == buffer->planes().size() - 1 || plane.fd.get() != buffer->planes()[i + 1].fd.get() )
 				{
-					void *memory = mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
-					mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(memory), buffer_size ) );
+					bufPtr = (uint8_t *) mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
+
+                    std::cout << "Buffer Map - ptr: " << bufPtr << "  length: " << buffer_size << std::endl;
+                    
+					mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(bufPtr), buffer_size ) );
 					buffer_size = 0;
 				}
 			}
@@ -285,47 +290,6 @@ CameraThread::test()
 
 
     // app.StartCamera();
-#if 0
-	// This makes all the Request objects that we shall need.
-	// makeRequests();
-    std::vector< std::unique_ptr< libcamera::Request > > requests;
-
-	auto free_buffers( frame_buffers );
-	for( libcamera::StreamConfiguration &config : *configuration )
-	{
-		libcamera::Stream *stream = config.stream();
-		if( stream == configuration->at(0).stream() )
-		{
-			if( free_buffers[ stream ].empty() )
-			{
-				std::cout << "Requests created" << std::endl;
-				break;
-			}
-
-			std::unique_ptr< libcamera::Request > request = camera->createRequest();
-			if( !request )
-            {
-                std::cerr << "failed to make request" << std::endl;
-                return;
-            }
-
-			requests.push_back( std::move( request ) );
-		}
-		else if( free_buffers[ stream ].empty() )
-        {
-    		std::cerr << "concurrent streams need matching numbers of buffers" << std::endl;
-            return;
-        }
-
-        libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
-		free_buffers[ stream ].pop();
-		if( requests.back()->addBuffer( stream, buffer ) < 0 )
-        {
-		    std::cerr << "failed to add buffer to request" << std::endl;
-            return;
-        }
-	}
-#endif
     std::cout << "Requests Complete" << std::endl;
 
 #if 0
@@ -518,7 +482,19 @@ CameraThread::test()
 
 	std::cout << "Camera stopped!" << std::endl;
 
+    JPEGSerializer jpgSer;
 
+	libcamera::StreamConfiguration const &cfg = configuration->at(0); //.stream();stream->configuration();
+
+    JPS_RIF_T pFormat = JPS_RIF_NOTSET;
+	if( cfg.pixelFormat == libcamera::formats::YUYV )
+        pFormat = JPS_RIF_YUYV;
+	else if( cfg.pixel_format == libcamera::formats::YUV420 )
+        pFormat = JPS_RIF_YUV420;
+
+    jpgSer.setRawSource( pFormat, cfg.size.width, cfg.size.height, cfg.stride, bufPtr, buffer_size );
+
+    jpgSer.serialize();
 
 	//	LOG(1, "Still capture image received");
 	//	save_images(app, completed_request);
