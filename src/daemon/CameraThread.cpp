@@ -292,6 +292,19 @@ CameraThread::test()
     // app.StartCamera();
     std::cout << "Requests Complete" << std::endl;
 
+	libcamera::Rectangle sensor_area = camera->properties().get( libcamera::properties::ScalerCropMaximum );
+	int x = 0.25 * sensor_area.width;
+	int y = 0.25 * sensor_area.height;
+	int w = 0.4 * sensor_area.width;
+	int h = 0.5 * sensor_area.height;
+	libcamera::Rectangle crop( x, y, w, h );
+	crop.translateBy( sensor_area.topLeft() );
+	std::cout << "Using crop " << crop.toString() << std::endl;
+	ctrlList.set( libcamera::controls::ScalerCrop, crop );
+
+    ctrlList.set( libcamera::controls::AfMode, libcamera::controls::AfModeAuto );
+    ctrlList.set( libcamera::controls::AfTrigger, libcamera::controls::AfTriggerStart );
+
 #if 0
 	// Build a list of initial controls that we must set in the camera before starting it.
 	// We don't overwrite anything the application may have set before calling us.
