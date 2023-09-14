@@ -489,7 +489,7 @@ CameraThread::test()
     JPS_RIF_T pFormat = JPS_RIF_NOTSET;
 	if( cfg.pixelFormat == libcamera::formats::YUYV )
         pFormat = JPS_RIF_YUYV;
-	else if( cfg.pixel_format == libcamera::formats::YUV420 )
+	else if( cfg.pixelFormat == libcamera::formats::YUV420 )
         pFormat = JPS_RIF_YUV420;
 
     jpgSer.setRawSource( pFormat, cfg.size.width, cfg.size.height, cfg.stride, bufPtr, buffer_size );
