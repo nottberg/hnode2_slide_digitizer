@@ -16,6 +16,7 @@
 #include <libcamera/formats.h>
 #include <libcamera/framebuffer_allocator.h>
 #include <libcamera/request.h>
+#include <libcamera/property_ids.h>
 
 class Metadata
 {

@@ -292,7 +292,7 @@ CameraThread::test()
     // app.StartCamera();
     std::cout << "Requests Complete" << std::endl;
 
-	libcamera::Rectangle sensor_area = camera->properties().get( libcamera::properties::ScalerCropMaximum );
+	libcamera::Rectangle sensor_area = *(camera->properties().get( libcamera::properties::ScalerCropMaximum ));
 	int x = 0.25 * sensor_area.width;
 	int y = 0.25 * sensor_area.height;
 	int w = 0.4 * sensor_area.width;
@@ -441,7 +441,11 @@ CameraThread::test()
 	bool camera_started = true;
 	uint last_timestamp = 0;
 
+	std::cout << "Camera started!" << std::endl;
+
 	// post_processor_.Start();
+
+    sleep(10);
 
     std::cout << "Pre requestCompleted.connect" << std::endl;
 
@@ -458,10 +462,9 @@ CameraThread::test()
         }
 	}
 
-	std::cout << "Camera started!" << std::endl;
 
 
-    sleep(10);
+    sleep(2);
 
 	//	app.StopCamera();
 	//{
