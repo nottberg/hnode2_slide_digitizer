@@ -202,7 +202,9 @@ CameraThread::test()
 
     std::map< libcamera::FrameBuffer *, std::vector< libcamera::Span<uint8_t> > > mapped_buffers;
     std::map< libcamera::Stream *, std::queue< libcamera::FrameBuffer * > > frame_buffers;
-    std::vector< std::unique_ptr< libcamera::Request > > requests;
+    //std::vector< std::unique_ptr< libcamera::Request > > requests;
+	std::unique_ptr< libcamera::Request > l_request;
+
 	size_t buffer_size = 0;
 	uint8_t *bufPtr = nullptr;
 
@@ -239,18 +241,18 @@ CameraThread::test()
 			}
 			frame_buffers[ stream ].push( buffer.get() );
 
-			std::unique_ptr< libcamera::Request > request = camera->createRequest();
-			if( !request )
+			l_request = camera->createRequest();
+			if( !l_request )
             {
                 std::cerr << "failed to make request" << std::endl;
                 return;
             }
 
-			requests.push_back( std::move( request ) );
+			//requests.push_back( std::move( request ) );
 
             //libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
 	    	//free_buffers[ stream ].pop();
-		    if( requests.back()->addBuffer( stream, buffer.get() ) < 0 )
+		    if( l_request->addBuffer( stream, buffer.get() ) < 0 )
             {
 		        std::cerr << "failed to add buffer to request" << std::endl;
                 return;
@@ -301,9 +303,6 @@ CameraThread::test()
 	crop.translateBy( sensor_area.topLeft() );
 	std::cout << "Using crop " << crop.toString() << std::endl;
 	ctrlList.set( libcamera::controls::ScalerCrop, crop );
-
-    ctrlList.set( libcamera::controls::AfMode, libcamera::controls::AfModeAuto );
-    ctrlList.set( libcamera::controls::AfTrigger, libcamera::controls::AfTriggerStart );
 
 #if 0
 	// Build a list of initial controls that we must set in the camera before starting it.
@@ -445,26 +444,78 @@ CameraThread::test()
 
 	// post_processor_.Start();
 
-    sleep(10);
-
     std::cout << "Pre requestCompleted.connect" << std::endl;
 
 	camera->requestCompleted.connect( this, &CameraThread::requestComplete );
 
-	for( std::unique_ptr< libcamera::Request > &request : requests )
+
+	//for( std::unique_ptr< libcamera::Request > &request : requests )
+	//{
+
+	bool scanning = true;
+	do
 	{
-        std::cout << "Queueing request" << std::endl;
+		if( m_captureStateMutex.try_lock() == false )
+		{
+			std::cout << "Polling capture state - retry" << std::endl;
+			sleep( 1 );
+			continue;
+		}
 
-		if( camera->queueRequest( request.get() ) < 0 )
-        {
-			std::cerr << "Failed to queue request" << std::endl;
-            return;
-        }
-	}
+		switch( m_captureState )
+		{
+			// Haven't submited the first request yet,
+			// So build and submit that.
+			case CTC_STATE_IDLE:
+			{
+				// Trigger the autofocus
+				libcamera::ControlList cl;
+				cl.set( libcamera::controls::AfMode, libcamera::controls::AfModeAuto );
+				cl.set( libcamera::controls::AfTrigger, libcamera::controls::AfTriggerStart );
 
+				l_request->controls() = std::move( cl );
 
+				std::cout << "Queueing initial request" << std::endl;
 
-    sleep(2);
+				if( camera->queueRequest( l_request.get() ) < 0 )
+    			{
+					std::cerr << "Failed to queue request" << std::endl;
+					m_captureStateMutex.unlock();
+        			return;
+    			}
+			}
+			break;
+
+			// The camera is still scanning the autofocus
+			// so resubmit the request to continue monitoring
+			// for finished autofocus.
+			case CTC_STATE_FOCUS:
+			{
+			    std::cout << "Queueing polling request" << std::endl;
+
+				if( camera->queueRequest( l_request.get() ) < 0 )
+    			{
+					std::cerr << "Failed to queue request" << std::endl;
+					m_captureStateMutex.unlock();
+        			return;
+    			}
+			}
+			break;
+
+			// Autofocus has completed, so exit the 
+			// loop and store this image as the one.
+			case CTC_STATE_CAPTURED:
+			{
+			    std::cout << "Capture Request completed" << std::endl;
+				scanning = false;
+			}
+			break;
+		}
+
+		// Release the mutex, since we are done modifying capture state
+		m_captureStateMutex.unlock();
+
+	}while( scanning == true );
 
 	//	app.StopCamera();
 	//{
@@ -537,17 +588,40 @@ CameraThread::test()
 void
 CameraThread::requestComplete( libcamera::Request *request )
 {
-    std::cout << "requestComplete - start - status: " << request->status() << std::endl;
+    std::cout << "requestComplete - start" << std::endl;
+
+	// Aquire the lock.
+	m_captureStateMutex.lock();
+
+    std::cout << "requestComplete - status: " << request->status() << std::endl;
 
 	if( request->status() == libcamera::Request::RequestCancelled )
 	{
 		// If the request is cancelled while the camera is still running, it indicates
 		// a hardware timeout. Let the application handle this error.
         std::cerr << "RequestCancelled, hardware timeout" << std::endl;
+		m_captureStateMutex.unlock();
 		return;
 	}
 
-	CompletedRequest *r = new CompletedRequest( seqCnt++, request );
+	// Check if autofocus is still scanning
+	FrameInfo fi( request->metadata() );
+	std::cout << "requestComplete - afState: " << fi.af_state << std::endl;
+	bool scanning = ( fi.af_state == libcamera::controls::AfStateScanning );
+	if( scanning )
+		m_captureState = CTC_STATE_FOCUS;
+	else
+		m_captureState = CTC_STATE_CAPTURED;
+
+	std::cout << "requestComplete - capState: " << m_captureState << std::endl;
+
+	m_captureStateMutex.unlock();
+
+	//	af_wait_state = AF_WAIT_FINISHED;
+	//else if (af_wait_state == AF_WAIT_FINISHED)
+	//want_capture = true;
+
+	//CompletedRequest *r = new CompletedRequest( seqCnt++, request );
 //	libcamera::CompletedRequestPtr payload( r, [this]( libcamera::CompletedRequest *cr ) { this->queueRequest( cr ); });
 //	{
 //		std::lock_guard<std::mutex> lock( completed_requests_mutex_ );
