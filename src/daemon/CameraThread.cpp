@@ -504,6 +504,8 @@ CameraThread::test()
 			{
 			    std::cout << "Queueing polling request" << std::endl;
 
+				l_request->reuse( ReuseBuffers );
+				
 				libcamera::ControlList cl;
 				l_request->controls() = std::move( cl );
 
