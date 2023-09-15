@@ -493,7 +493,7 @@ CameraThread::test()
         			return;
     			}
 
-				m_captureState = CTC_STATE_WAIT_COMPLETE:
+				m_captureState = CTC_STATE_WAIT_COMPLETE;
 			}
 			break;
 
@@ -514,7 +514,7 @@ CameraThread::test()
         			return;
     			}
 
-				m_captureState = CTC_STATE_WAIT_COMPLETE:
+				m_captureState = CTC_STATE_WAIT_COMPLETE;
 			}
 			break;
 
