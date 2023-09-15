@@ -59,9 +59,6 @@ CameraThread::test()
         return;
     }
 
-	//if (options_->camera >= cameras.size())
-	//	throw std::runtime_error("selected camera is not available");
-
 	std::string const &cam_id = cameras[0]->id();
 
     std::cout << "Cam 0 ID: " << cam_id << std::endl;
@@ -83,51 +80,9 @@ CameraThread::test()
 
 	std::cout << "Acquired camera " << cam_id << std::endl;
 
-#if 0
-	if (!options_->post_process_file.empty())
-		post_processor_.Read(options_->post_process_file);
-	// The queue takes over ownership from the post-processor.
-	post_processor_.SetCallback(
-		[this](CompletedRequestPtr &r) { this->msg_queue_.Post(Msg(MsgType::RequestComplete, std::move(r))); });
-
-	if (options_->framerate)
-	{
-		std::unique_ptr<CameraConfiguration> config = camera_->generateConfiguration({ libcamera::StreamRole::Raw });
-		const libcamera::StreamFormats &formats = config->at(0).formats();
-
-		// Suppress log messages when enumerating camera modes.
-		libcamera::logSetLevel("RPI", "ERROR");
-		libcamera::logSetLevel("Camera", "ERROR");
-
-		for (const auto &pix : formats.pixelformats())
-		{
-			for (const auto &size : formats.sizes(pix))
-			{
-				config->at(0).size = size;
-				config->at(0).pixelFormat = pix;
-				config->validate();
-				camera_->configure(config.get());
-				auto fd_ctrl = camera_->controls().find(&controls::FrameDurationLimits);
-				sensor_modes_.emplace_back(size, pix, 1.0e6 / fd_ctrl->second.min().get<int64_t>());
-			}
-		}
-
-		libcamera::logSetLevel("RPI", "INFO");
-		libcamera::logSetLevel("Camera", "INFO");
-	}
-#endif
-
-
-
-
-	// app.ConfigureStill(still_flags);
-
-
 	std::cout << "Configuring still capture..." << std::endl;
 
-	// Always request a raw stream as this forces the full resolution capture mode.
-	// (options_->mode can override the choice of camera mode, however.)
-	//std::vector<libcamera::StreamRole> stream_roles = { libcamera::StreamRole::StillCapture, libcamera::StreamRole::Raw };
+	// Setup stream role
 	std::vector<libcamera::StreamRole> stream_roles = { libcamera::StreamRole::StillCapture };
 	std::unique_ptr< libcamera::CameraConfiguration > configuration = camera->generateConfiguration( stream_roles );
 	if( !configuration )
@@ -137,22 +92,8 @@ CameraThread::test()
     }
 
 	// Now we get to override any of the default settings from the options_->
-#if 0    
-	if (flags & FLAG_STILL_BGR)
-		configuration->at(0).pixelFormat = libcamera::formats::BGR888;
-	else if (flags & FLAG_STILL_RGB)
-		configuration->at(0).pixelFormat = libcamera::formats::RGB888;
-	else
-#endif
 	configuration->at(0).pixelFormat = libcamera::formats::YUV420;
-#if 0    
-	if ((flags & FLAG_STILL_BUFFER_MASK) == FLAG_STILL_DOUBLE_BUFFER)
-		configuration->at(0).bufferCount = 2;
-	else if ((flags & FLAG_STILL_BUFFER_MASK) == FLAG_STILL_TRIPLE_BUFFER)
-		configuration->at(0).bufferCount = 3;
-	else if (options->buffer_count > 0)
-		configuration->at(0).bufferCount = options->buffer_count;
-#endif
+
 	//if (options->width)
 		configuration->at(0).size.width = 4624; //options->width;
 	//if (options->height)
@@ -160,21 +101,7 @@ CameraThread::test()
 
 	configuration->at(0).colorSpace = libcamera::ColorSpace::Sycc;
 	//configuration->transform = options->transform;
-#if 0
-	post_processor.AdjustConfig("still", &configuration->at(0));
-
-	if (options->mode.bit_depth)
-	{
-		configuration->at(1).size = options->mode.Size();
-		configuration->at(1).pixelFormat = mode_to_pixel_format(options->mode);
-	}
-	configuration->at(1).bufferCount = configuration->at(0).bufferCount;
-
-	configureDenoise(options->denoise == "auto" ? "cdn_hq" : options->denoise);
-#endif
 	
-    // setupCapture();
-
 	// First finish setting up the configuration.
 #if 0    
 	libcamera::CameraConfiguration::Status validation = configuration->validate();
@@ -200,9 +127,9 @@ CameraThread::test()
 
 	// Next allocate all the buffers we need, mmap them and store them on a free list.
 
-    std::map< libcamera::FrameBuffer *, std::vector< libcamera::Span<uint8_t> > > mapped_buffers;
-    std::map< libcamera::Stream *, std::queue< libcamera::FrameBuffer * > > frame_buffers;
-    //std::vector< std::unique_ptr< libcamera::Request > > requests;
+//    std::map< libcamera::FrameBuffer *, std::vector< libcamera::Span<uint8_t> > > mapped_buffers;
+//    std::map< libcamera::Stream *, std::queue< libcamera::FrameBuffer * > > frame_buffers;
+
 	std::unique_ptr< libcamera::Request > l_request;
 
 	size_t buffer_size = 0;
@@ -221,79 +148,52 @@ CameraThread::test()
             return;
         }
 
-		for( const std::unique_ptr<libcamera::FrameBuffer> &buffer : allocator->buffers( stream ) )
+		if( allocator->buffers( stream ).size() != 1 )
 		{
-			// "Single plane" buffers appear as multi-plane here, but we can spot them because then
-			// planes all share the same fd. We accumulate them so as to mmap the buffer only once.
-			for( unsigned i = 0; i < buffer->planes().size(); i++ )
-			{
-				const libcamera::FrameBuffer::Plane &plane = buffer->planes()[i];
-				buffer_size += plane.length;
-				if( i == buffer->planes().size() - 1 || plane.fd.get() != buffer->planes()[i + 1].fd.get() )
-				{
-					bufPtr = (uint8_t *) mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
-
-                    std::cout << "Buffer Map - ptr: " << bufPtr << "  length: " << buffer_size << std::endl;
-                    
-					mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(bufPtr), buffer_size ) );
-					buffer_size = 0;
-				}
-			}
-			frame_buffers[ stream ].push( buffer.get() );
-
-			l_request = camera->createRequest();
-			if( !l_request )
-            {
-                std::cerr << "failed to make request" << std::endl;
-                return;
-            }
-
-			//requests.push_back( std::move( request ) );
-
-            //libcamera::FrameBuffer *buffer = free_buffers[ stream ].front();
-	    	//free_buffers[ stream ].pop();
-		    if( l_request->addBuffer( stream, buffer.get() ) < 0 )
-            {
-		        std::cerr << "failed to add buffer to request" << std::endl;
-                return;
-            }
+			std::cerr << "More than one allocated buffer" << std::endl;
+            return;
 		}
+
+		std::unique_ptr<libcamera::FrameBuffer> buffer = allocator->buffers( stream )[0];
+
+		if( buffer->planes().size() != 1 )
+		{
+			std::cerr << "Allocated buffer has more than on plane" << std::endl;
+            return;
+		}
+
+		const libcamera::FrameBuffer::Plane &plane = buffer->planes()[0];
+		buffer_size += plane.length;
+		bufPtr = (uint8_t *) mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
+
+        std::cout << "Buffer Map - ptr: " << bufPtr << "  length: " << buffer_size << std::endl;
+                    
+		//mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(bufPtr), buffer_size ) );
+		//buffer_size = 0;
+		//		}
+		//	}
+		//	frame_buffers[ stream ].push( buffer.get() );
+
+		l_request = camera->createRequest();
+		if( !l_request )
+        {
+            std::cerr << "failed to make request" << std::endl;
+            return;
+        }
+
+		if( l_request->addBuffer( stream, buffer.get() ) < 0 )
+        {
+		    std::cerr << "failed to add buffer to request" << std::endl;
+            return;
+        }
 	}
 	
-    std::cout << "Buffers allocated and mapped" << std::endl;
-
-	// startPreview();
-
-	// The requests will be made when StartCamera() is called.
-
-#if 0
-	streams_["still"] = configuration->at(0).stream();
-	streams_["raw"] = configuration->at(1).stream();
-
-	post_processor.Configure();
-#endif
-
 	std::cout << "Still capture setup complete" << std::endl;
 
+	// Setup the camera controls
     libcamera::ControlList ctrlList( libcamera::controls::controls );
 
-	//libcamera::ControlList cl;
-	//cl.set(libcamera::controls::AfMode, libcamera::controls::AfModeAuto);
-	//cl.set(libcamera::controls::AfTrigger, libcamera::controls::AfTriggerCancel);
-	// Following is app.SetControls(cl);
-	//std::lock_guard<std::mutex> lock(control_mutex_);
-
-	// Add new controls to the stored list. If a control is duplicated,
-	// the value in the argument replaces the previously stored value.
-	// These controls will be applied to the next StartCamera or request.
-	//for (const auto &c : controls)
-	//	ctrlList.set(c.first, c.second);
-
-
-
-    // app.StartCamera();
-    std::cout << "Requests Complete" << std::endl;
-
+	// Set the region of interest
 	libcamera::Rectangle sensor_area = *(camera->properties().get( libcamera::properties::ScalerCropMaximum ));
 	int x = 0.25 * sensor_area.width;
 	int y = 0.25 * sensor_area.height;
@@ -437,21 +337,11 @@ CameraThread::test()
 
 	ctrlList.clear();
 
-	bool camera_started = true;
-	uint last_timestamp = 0;
-
 	std::cout << "Camera started!" << std::endl;
-
-	// post_processor_.Start();
-
-    std::cout << "Pre requestCompleted.connect" << std::endl;
 
 	camera->requestCompleted.connect( this, &CameraThread::requestComplete );
 
-
-	//for( std::unique_ptr< libcamera::Request > &request : requests )
-	//{
-
+	// Send requests to wait for auto focus to lock up, etc.
 	bool scanning = true;
 	bool delay = false;
 	do
@@ -542,41 +432,23 @@ CameraThread::test()
 
 	}while( scanning == true );
 
-	//	app.StopCamera();
-	//{
-		// We don't want QueueRequest to run asynchronously while we stop the camera.
-	//	std::lock_guard<std::mutex> lock(camera_stop_mutex_);
-	//	if (camera_started_)
-	//	{
-			if( camera->stop() )
-            {
-				std::cout << "failed to stop camera" << std::endl;
-            }
-
-			//post_processor_.Stop();
-
-			camera_started = false;
-		//}
-	//}
+	// Got our capture, shutdown the camera
+	if( camera->stop() )
+    {
+		std::cout << "failed to stop camera" << std::endl;
+    }
 
 	if( camera )
 		camera->requestCompleted.disconnect( this, &CameraThread::requestComplete );
-
-	// An application might be holding a CompletedRequest, so queueRequest will get
-	// called to delete it later, but we need to know not to try and re-queue it.
-	//completed_requests.clear();
-
-	//msg_queue_.Clear();
-
-	//requests.clear();
 
 	ctrlList.clear(); // no need for mutex here
 
 	std::cout << "Camera stopped!" << std::endl;
 
+	// Turn the capture into a jpeg file.
     JPEGSerializer jpgSer;
 
-	libcamera::StreamConfiguration const &cfg = configuration->at(0); //.stream();stream->configuration();
+	libcamera::StreamConfiguration const &cfg = configuration->at(0);
 
     JPS_RIF_T pFormat = JPS_RIF_NOTSET;
 	if( cfg.pixelFormat == libcamera::formats::YUYV )
@@ -588,26 +460,16 @@ CameraThread::test()
 
     jpgSer.serialize();
 
-	//	LOG(1, "Still capture image received");
-	//	save_images(app, completed_request);
-	//	save_metadata(options, completed_request->metadata);
-    //}
+	// Release the camera
+	camera->release();
 
-
-    // Close camera
-	//preview_.reset();
-
-	if( camera_acquired )
-		camera->release();
-	camera_acquired = false;
-
+	// Reset the camera object
 	camera.reset();
 
+	// Reset the camera manager object
 	m_camMgr.reset();
 
-	//if (!options_->help)
-	std::cout << "Camera closed" << std::endl;
-
+	std::cout << "Capture complete" << std::endl;
 }
 
 void
@@ -642,27 +504,4 @@ CameraThread::requestComplete( libcamera::Request *request )
 
 	m_captureStateMutex.unlock();
 
-	//	af_wait_state = AF_WAIT_FINISHED;
-	//else if (af_wait_state == AF_WAIT_FINISHED)
-	//want_capture = true;
-
-	//CompletedRequest *r = new CompletedRequest( seqCnt++, request );
-//	libcamera::CompletedRequestPtr payload( r, [this]( libcamera::CompletedRequest *cr ) { this->queueRequest( cr ); });
-//	{
-//		std::lock_guard<std::mutex> lock( completed_requests_mutex_ );
-//		completed_requests_.insert(r);
-//	}
-
-	// We calculate the instantaneous framerate in case anyone wants it.
-	// Use the sensor timestamp if possible as it ought to be less glitchy than
-	// the buffer timestamps.
-//	auto ts = payload->metadata.get(controls::SensorTimestamp);
-//	uint64_t timestamp = ts ? *ts : payload->buffers.begin()->second->metadata().timestamp;
-//	if (last_timestamp_ == 0 || last_timestamp_ == timestamp)
-//		payload->framerate = 0;
-//	else
-//		payload->framerate = 1e9 / (timestamp - last_timestamp_);
-//	last_timestamp_ = timestamp;
-
-//	post_processor_.Process(payload); // post-processor can re-use our shared_ptr
 }

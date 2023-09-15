@@ -18,6 +18,7 @@
 #include <libcamera/request.h>
 #include <libcamera/property_ids.h>
 
+#if 0
 class Metadata
 {
     public:
@@ -126,6 +127,7 @@ struct CompletedRequest
 };
 
 //using CompletedRequestPtr = std::shared_ptr<CompletedRequest>;
+#endif
 
 typedef enum CameraThreadCaptureStateEnum
 {
