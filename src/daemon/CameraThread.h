@@ -130,6 +130,7 @@ struct CompletedRequest
 typedef enum CameraThreadCaptureStateEnum
 {
     CTC_STATE_IDLE,
+    CTC_STATE_WAIT_COMPLETE,
     CTC_STATE_FOCUS,
     CTC_STATE_CAPTURED
 } CTC_STATE_T;

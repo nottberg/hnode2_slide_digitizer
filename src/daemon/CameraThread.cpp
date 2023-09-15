@@ -453,6 +453,7 @@ CameraThread::test()
 	//{
 
 	bool scanning = true;
+	bool delay = false;
 	do
 	{
 		if( m_captureStateMutex.try_lock() == false )
@@ -464,6 +465,14 @@ CameraThread::test()
 
 		switch( m_captureState )
 		{
+			// Check if we are just waiting for the completion to occur
+			case CTC_STATE_WAIT_COMPLETE:
+			{
+				std::cout << "Waiting for request complete" << std::endl;
+				delay = true;
+			}
+			break;
+
 			// Haven't submited the first request yet,
 			// So build and submit that.
 			case CTC_STATE_IDLE:
@@ -483,6 +492,8 @@ CameraThread::test()
 					m_captureStateMutex.unlock();
         			return;
     			}
+
+				m_captureState = CTC_STATE_WAIT_COMPLETE:
 			}
 			break;
 
@@ -493,12 +504,17 @@ CameraThread::test()
 			{
 			    std::cout << "Queueing polling request" << std::endl;
 
+				libcamera::ControlList cl;
+				l_request->controls() = std::move( cl );
+
 				if( camera->queueRequest( l_request.get() ) < 0 )
     			{
 					std::cerr << "Failed to queue request" << std::endl;
 					m_captureStateMutex.unlock();
         			return;
     			}
+
+				m_captureState = CTC_STATE_WAIT_COMPLETE:
 			}
 			break;
 
@@ -514,6 +530,13 @@ CameraThread::test()
 
 		// Release the mutex, since we are done modifying capture state
 		m_captureStateMutex.unlock();
+
+		// If we are waiting then delay a bit.
+		if( delay == true )
+		{
+			sleep(1);
+			delay = false;
+		}
 
 	}while( scanning == true );
 
