@@ -127,7 +127,7 @@ struct CompletedRequest
 
 //using CompletedRequestPtr = std::shared_ptr<CompletedRequest>;
 
-enum CameraThreadCaptureStateEnum
+typedef enum CameraThreadCaptureStateEnum
 {
     CTC_STATE_IDLE,
     CTC_STATE_FOCUS,
@@ -148,7 +148,7 @@ class CameraThread
 
         uint64_t seqCnt;
 
-        std::mutext m_captureStateMutex;
+        std::mutex  m_captureStateMutex;
         CTC_STATE_T m_captureState;
 
         std::unique_ptr<libcamera::CameraManager> m_camMgr;

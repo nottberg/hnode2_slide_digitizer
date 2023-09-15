@@ -22,7 +22,7 @@
 
 CameraThread::CameraThread()
 {
-
+    m_captureState = CTC_STATE_IDLE;
 }
 
 CameraThread::~CameraThread()
@@ -543,7 +543,7 @@ CameraThread::test()
 
 	//msg_queue_.Clear();
 
-	requests.clear();
+	//requests.clear();
 
 	ctrlList.clear(); // no need for mutex here
 
@@ -605,10 +605,10 @@ CameraThread::requestComplete( libcamera::Request *request )
 	}
 
 	// Check if autofocus is still scanning
-	FrameInfo fi( request->metadata() );
-	std::cout << "requestComplete - afState: " << fi.af_state << std::endl;
-	bool scanning = ( fi.af_state == libcamera::controls::AfStateScanning );
-	if( scanning )
+	int af_state = *request->metadata().get( libcamera::controls::AfState );
+	std::cout << "requestComplete - afState: " << af_state << std::endl;
+
+	if( af_state == libcamera::controls::AfStateScanning )
 		m_captureState = CTC_STATE_FOCUS;
 	else
 		m_captureState = CTC_STATE_CAPTURED;
