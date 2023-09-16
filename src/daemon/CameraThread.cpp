@@ -154,11 +154,16 @@ CameraThread::test()
             return;
 		}
 
-		std::unique_ptr<libcamera::FrameBuffer> buffer = allocator->buffers( stream )[0];
+                const std::unique_ptr< libcamera::FrameBuffer > &buffer = allocator->buffers( stream ).front();
+
+		std::cout << "Allocated buffer plane count: " << buffer->planes().size() << std::endl;
+		std::cout << "plane 0 - size: " << buffer->planes()[0].length << "  fd: " << buffer->planes()[0].fd.get() << std::endl;
+		std::cout << "plane 1 - size: " << buffer->planes()[1].length << "  fd: " << buffer->planes()[1].fd.get() << std::endl;
+		std::cout << "plane 2 - size: " << buffer->planes()[2].length << "  fd: " << buffer->planes()[2].fd.get() << std::endl;
 
 		if( buffer->planes().size() != 1 )
 		{
-			std::cerr << "Allocated buffer has more than on plane" << std::endl;
+			std::cerr << "Allocated buffer has more than one plane" << std::endl;
             return;
 		}
 
