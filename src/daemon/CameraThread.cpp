@@ -154,21 +154,27 @@ CameraThread::test()
             return;
 		}
 
-                const std::unique_ptr< libcamera::FrameBuffer > &buffer = allocator->buffers( stream ).front();
+        const std::unique_ptr< libcamera::FrameBuffer > &buffer = allocator->buffers( stream ).front();
+		const libcamera::FrameBuffer::Plane &plane = buffer->planes()[0];
 
 		std::cout << "Allocated buffer plane count: " << buffer->planes().size() << std::endl;
 		std::cout << "plane 0 - size: " << buffer->planes()[0].length << "  fd: " << buffer->planes()[0].fd.get() << std::endl;
 		std::cout << "plane 1 - size: " << buffer->planes()[1].length << "  fd: " << buffer->planes()[1].fd.get() << std::endl;
 		std::cout << "plane 2 - size: " << buffer->planes()[2].length << "  fd: " << buffer->planes()[2].fd.get() << std::endl;
 
-		if( buffer->planes().size() != 1 )
+		// Add up all of the planes sizes and ensure they are all the same fd.
+		int ogfd = plane.fd.get();
+		for( uint i = 0; i < buffer->planes().size; i++ )
 		{
-			std::cerr << "Allocated buffer has more than one plane" << std::endl;
-            return;
+			buffer_size += buffer->planes()[i].length;
+			if( buffer->planes()[i].fd.get() != ogfd )
+			{
+				std::cerr << "Buffer plane fds do not match" << std::endl;
+				return;
+			}
 		}
 
-		const libcamera::FrameBuffer::Plane &plane = buffer->planes()[0];
-		buffer_size += plane.length;
+		// Memory map the whole buffer for the camera to capture into
 		bufPtr = (uint8_t *) mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
 
         std::cout << "Buffer Map - ptr: " << bufPtr << "  length: " << buffer_size << std::endl;
