@@ -17,6 +17,7 @@
 
 #include <hnode2/HNodeDevice.h>
 
+#include "CameraThread.h"
 #include "HNSlideDigitizerDevicePrivate.h"
 
 using namespace Poco::Util;
@@ -323,7 +324,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
     std::string opID = opData->getOpID();
           
-    // GET "/hnode2/test/status"
+    // GET "/hnode2/slide-digitizer/status"
     if( "getStatus" == opID )
     {
         std::cout << "=== Get Status Request ===" << std::endl;
@@ -347,10 +348,10 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
-    // GET "/hnode2/test/widgets"
-    else if( "getWidgetList" == opID )
+    // GET "/hnode2/slide-digitizer/captures"
+    else if( "getCaptureList" == opID )
     {
-        std::cout << "=== Get Widget List Request ===" << std::endl;
+        std::cout << "=== Get Capture List Request ===" << std::endl;
 
         // Set response content type
         opData->responseSetChunkedTransferEncoding( true );
@@ -385,19 +386,19 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
-    // GET "/hnode2/test/widgets/{widgetid}"
-    else if( "getWidgetInfo" == opID )
+    // GET "/hnode2/slide-digitizer/captures/{captureid}"
+    else if( "getCaptureInfo" == opID )
     {
-        std::string widgetID;
+        std::string captureID;
 
-        if( opData->getParam( "widgetid", widgetID ) == true )
+        if( opData->getParam( "captureid", captureID ) == true )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
             return; 
         }
 
-        std::cout << "=== Get Widget Info Request (id: " << widgetID << ") ===" << std::endl;
+        std::cout << "=== Get Capture Info Request (id: " << captureID << ") ===" << std::endl;
 
         // Set response content type
         opData->responseSetChunkedTransferEncoding( true );
@@ -422,51 +423,31 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
 
     }
-    // POST "/hnode2/test/widgets"
-    else if( "createWidget" == opID )
+    // POST "/hnode2/slide-digitizer/captures"
+    else if( "startCapture" == opID )
     {
         std::istream& rs = opData->requestBody();
         std::string body;
         Poco::StreamCopier::copyToString( rs, body );
         
-        std::cout << "=== Create Widget Post Data ===" << std::endl;
+        std::cout << "=== Start Capture Post Data ===" << std::endl;
         std::cout << body << std::endl;
+
+        CameraThread tstCam;
+
+        tstCam.test();
 
         // Object was created return info
         opData->responseSetCreated( "w1" );
         opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
-    }
-    // PUT "/hnode2/test/widgets/{widgetid}"
-    else if( "updateWidget" == opID )
+    }       
+    // DELETE "/hnode2/slide-digitizer/captures/{captureid}"
+    else if( "deleteCapture" == opID )
     {
-        std::string widgetID;
+        std::string captureID;
 
         // Make sure zoneid was provided
-        if( opData->getParam( "widgetid", widgetID ) == true )
-        {
-            // widgetid parameter is required
-            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
-            opData->responseSend();
-            return; 
-        }
-        
-        std::istream& rs = opData->requestBody();
-        std::string body;
-        Poco::StreamCopier::copyToString( rs, body );
-        
-        std::cout << "=== Update Widget Put Data (id: " << widgetID << ") ===" << std::endl;
-        std::cout << body << std::endl;
-
-        // Request was successful
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-    }    
-    // DELETE "/hnode2/test/widgets/{widgetid}"
-    else if( "deleteWidget" == opID )
-    {
-        std::string widgetID;
-
-        // Make sure zoneid was provided
-        if( opData->getParam( "widgetid", widgetID ) == true )
+        if( opData->getParam( "captureid", captureID ) == true )
         {
             // widgetid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
@@ -474,77 +455,48 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
             return; 
         }
 
-        std::cout << "=== Delete Widget Request (id: " << widgetID << ") ===" << std::endl;
+        std::cout << "=== Delete Capture Request (id: " << captureID << ") ===" << std::endl;
 
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
-    // PUT "/hnode2/test/health"
-    else if( "putTestHealth" == opID )
+    // GET "/hnode2/slide-digitizer/captures/{captureid}/image"
+    else if( "getCaptureImage" == opID )
     {
-        // Get access to payload
-        std::istream& rs = opData->requestBody();
+        std::string captureID;
 
-        // Parse the json body of the request
-        try
+        if( opData->getParam( "captureid", captureID ) == true )
         {
-            std::string component = HNDH_ROOT_COMPID;
-            std::string status = "OK";
-            uint errCode = 200;
-
-            // Attempt to parse the json
-            pjs::Parser parser;
-            pdy::Var varRoot = parser.parse( rs );
-
-            // Get a pointer to the root object
-            pjs::Object::Ptr jsRoot = varRoot.extract< pjs::Object::Ptr >();
-
-            if( jsRoot->has( "component" ) )
-                component = jsRoot->getValue<std::string>( "component" );
-
-            if( jsRoot->has( "status" ) )
-                status = jsRoot->getValue<std::string>( "status" );
-
-            if( jsRoot->has( "errCode" ) )
-                errCode = jsRoot->getValue<uint>( "errCode" );
-
-            m_hnodeDev.getHealthRef().startUpdateCycle( time(NULL) );
-
-            if( status == "OK" )
-            {
-                m_hnodeDev.getHealthRef().setComponentStatus( component, HNDH_CSTAT_OK );
-                m_hnodeDev.getHealthRef().clearComponentErrMsg( component );
-                m_hnodeDev.getHealthRef().clearComponentNote( component );
-            }
-            else if( status == "UNKNOWN" )
-            {
-                m_hnodeDev.getHealthRef().setComponentStatus( component, HNDH_CSTAT_UNKNOWN );
-                m_hnodeDev.getHealthRef().clearComponentErrMsg( component );
-            }
-            else if( status == "FAILED" )
-            {
-                m_hnodeDev.getHealthRef().setComponentStatus( component, HNDH_CSTAT_FAILED );
-                m_hnodeDev.getHealthRef().setComponentErrMsg( component, errCode, m_errStrCode, errCode );
-            }
-            else if( status == "NOTE" )
-            {
-                m_hnodeDev.getHealthRef().setComponentNote( component, m_noteStrCode );
-            }
-
-            m_hnodeDev.getHealthRef().completeUpdateCycle();
-
-        }
-        catch( Poco::Exception ex )
-        {
-            std::cout << "putTestHealth exception: " << ex.displayText() << std::endl;
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
-            return;
+            return; 
         }
 
+        std::cout << "=== Get Capture Image Request (id: " << captureID << ") ===" << std::endl;
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding( true );
+        opData->responseSetContentType( "application/json" );
+        
+        // Create a json root object
+        pjs::Array jsRoot;
+
+        pjs::Object w1Obj;
+        w1Obj.set( "id", widgetID );
+        w1Obj.set( "color", "black" );
+        jsRoot.add( w1Obj );
+          
+        // Render response content
+        std::ostream& ostr = opData->responseSend();
+        try{ 
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+        } catch( ... ) {
+            std::cout << "ERROR: Exception while serializing comment" << std::endl;
+        }            
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
-    }        
+
+    }    
     else
     {
         // Send back not implemented
@@ -566,7 +518,7 @@ const std::string g_HNode2TestRest = R"(
     "title": ""
   },
   "paths": {
-      "/hnode2/test/status": {
+      "/hnode2/slide-digitizer/status": {
         "get": {
           "summary": "Get test device status.",
           "operationId": "getStatus",
@@ -588,10 +540,10 @@ const std::string g_HNode2TestRest = R"(
         }
       },
 
-      "/hnode2/test/widgets": {
+      "/hnode2/slide-digitizer/captures": {
         "get": {
-          "summary": "Return made up widget list.",
-          "operationId": "getWidgetList",
+          "summary": "Return list of active captures.",
+          "operationId": "getCaptureList",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -610,8 +562,8 @@ const std::string g_HNode2TestRest = R"(
         },
 
         "post": {
-          "summary": "Create a new widget - dummy.",
-          "operationId": "createWidget",
+          "summary": "Start a new capture",
+          "operationId": "startCapture",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -630,29 +582,10 @@ const std::string g_HNode2TestRest = R"(
         }
       },
 
-      "/hnode2/test/widgets/{widgetid}": {
+      "/hnode2/slide-digitizer/captures/{captureid}": {
         "get": {
-          "summary": "Get information about a specific widget - dummy.",
-          "operationId": "getWidgetInfo",
-          "responses": {
-            "200": {
-              "description": "successful operation",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object"
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid status value"
-            }
-          }
-        },
-        "put": {
-          "summary": "Update a specific widget - dummy.",
-          "operationId": "updateWidget",
+          "summary": "Get information about a specific capture.",
+          "operationId": "getCaptureInfo",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -670,8 +603,8 @@ const std::string g_HNode2TestRest = R"(
           }
         },
         "delete": {
-          "summary": "Delete a specific widget - dummy",
-          "operationId": "deleteWidget",
+          "summary": "Delete a specific capture",
+          "operationId": "deleteCapture",
           "responses": {
             "200": {
               "description": "successful operation",
@@ -690,17 +623,17 @@ const std::string g_HNode2TestRest = R"(
         }
       },
 
-      "/hnode2/test/health": {
-        "put": {
-          "summary": "Cause a health state transistion",
-          "operationId": "putTestHealth",
+      "/hnode2/slide-digitizer/captures/{captureid}/image": {
+        "get": {
+          "summary": "Return the captured image.",
+          "operationId": "getCaptureImage",
           "responses": {
             "200": {
               "description": "successful operation",
               "content": {
                 "application/json": {
                   "schema": {
-                    "type": "array"
+                    "type": "object"
                   }
                 }
               }
