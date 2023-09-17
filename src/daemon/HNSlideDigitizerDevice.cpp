@@ -1,9 +1,13 @@
 #include <unistd.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <thread>
 
 #include "Poco/Util/ServerApplication.h"
@@ -474,28 +478,39 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
         std::cout << "=== Get Capture Image Request (id: " << captureID << ") ===" << std::endl;
 
+        // Stat the image file to get its length
+        struct stat statBuf;
+        if( stat( "/tmp/tmp.jpg", &statBuf ) != 0 )
+        {
+            std::cout << "ERROR: Could not open image file" << std::endl;
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "Image File Length: " << statBuf.st_size << std::endl;
+
         // Set response content type
         opData->responseSetChunkedTransferEncoding( true );
-        opData->responseSetContentType( "application/json" );
+        opData->responseSetContentType( "image/jpeg" );
         
-        // Create a json root object
-        pjs::Array jsRoot;
+        // Open a file stream
+        std::ifstream jpegIF;
 
-        pjs::Object w1Obj;
-        w1Obj.set( "id", captureID );
-        w1Obj.set( "color", "black" );
-        jsRoot.add( w1Obj );
-          
+        jpegIF.open( "/tmp/tmp.jpg" );
+
         // Render response content
         std::ostream& ostr = opData->responseSend();
-        try{ 
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+        try{
+            Poco::StreamCopier::copyStream( jpegIF, ostr );
         } catch( ... ) {
             std::cout << "ERROR: Exception while serializing comment" << std::endl;
-        }            
+        }
+
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
 
+        jpegIF.close();
     }    
     else
     {
