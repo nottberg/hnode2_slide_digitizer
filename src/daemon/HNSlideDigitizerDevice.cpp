@@ -408,7 +408,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         pjs::Array jsRoot;
 
         pjs::Object w1Obj;
-        w1Obj.set( "id", widgetID );
+        w1Obj.set( "id", captureID );
         w1Obj.set( "color", "black" );
         jsRoot.add( w1Obj );
           
@@ -449,7 +449,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Make sure zoneid was provided
         if( opData->getParam( "captureid", captureID ) == true )
         {
-            // widgetid parameter is required
+            // captureid parameter is required
             opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
             opData->responseSend();
             return; 
@@ -482,7 +482,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         pjs::Array jsRoot;
 
         pjs::Object w1Obj;
-        w1Obj.set( "id", widgetID );
+        w1Obj.set( "id", captureID );
         w1Obj.set( "color", "black" );
         jsRoot.add( w1Obj );
           
