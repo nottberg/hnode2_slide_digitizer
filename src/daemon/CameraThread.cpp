@@ -164,7 +164,7 @@ CameraThread::test()
 
 		// Add up all of the planes sizes and ensure they are all the same fd.
 		int ogfd = plane.fd.get();
-		for( uint i = 0; i < buffer->planes().size; i++ )
+		for( uint i = 0; i < buffer->planes().size(); i++ )
 		{
 			buffer_size += buffer->planes()[i].length;
 			if( buffer->planes()[i].fd.get() != ogfd )
