@@ -12,6 +12,8 @@
 #include <hnode2/HNEPLoop.h>
 #include <hnode2/HNReqWaitQueue.h>
 
+#include "CameraManager.h"
+
 #define HNODE_TEST_DEVTYPE   "hnode2-slide-digitizer-device"
 
 typedef enum HNSlideDigitizerDeviceResultEnum
@@ -24,6 +26,24 @@ typedef enum HNSlideDigitizerDeviceResultEnum
 
 class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNDEventNotifyInf, public HNEPLoopCallbacks 
 {
+    protected:
+        // HNDevice REST callback
+        virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );
+
+        // Notification for hnode device config changes.
+        virtual void hndnConfigChange( HNodeDevice *parent );
+
+        // Event loop functions
+        virtual void loopIteration();
+        virtual void timeoutEvent();
+        virtual void fdEvent( int sfd );
+        virtual void fdError( int sfd );
+
+        // Poco funcions
+        void defineOptions( Poco::Util::OptionSet& options );
+        void handleOption( const std::string& name, const std::string& value );
+        int main( const std::vector<std::string>& args );
+
     private:
         bool _helpRequested   = false;
         bool _debugLogging    = false;
@@ -37,6 +57,8 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNEPTrigger m_configUpdateTrigger;
 
         HNEPLoop m_testDeviceEvLoop;
+
+        CameraManager m_cameraMgr;
 
         // Format string codes
         uint m_errStrCode;
@@ -58,26 +80,6 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNSDD_RESULT_T updateConfig();
 
         //void generateNewHealthState();
-
-    protected:
-        // HNDevice REST callback
-        virtual void dispatchEP( HNodeDevice *parent, HNOperationData *opData );
-
-        // Notification for hnode device config changes.
-        virtual void hndnConfigChange( HNodeDevice *parent );
-
-        // Event loop functions
-        virtual void loopIteration();
-        virtual void timeoutEvent();
-        virtual void fdEvent( int sfd );
-        virtual void fdError( int sfd );
-
-        // Poco funcions
-        void defineOptions( Poco::Util::OptionSet& options );
-        void handleOption( const std::string& name, const std::string& value );
-        int main( const std::vector<std::string>& args );
-
-
 };
 
 #endif // __HN_TEST_DEVICE_PRIVATE_H__

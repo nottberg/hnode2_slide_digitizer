@@ -8,7 +8,7 @@
 #include <memory>
 #include <optional>
 
-#include <libcamera/base/span.h>
+//#include <libcamera/base/span.h>
 #include <libcamera/camera_manager.h>
 #include <libcamera/camera.h>
 #include <libcamera/control_ids.h>

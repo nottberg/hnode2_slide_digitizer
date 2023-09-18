@@ -126,6 +126,11 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     // Start accepting device notifications
     m_hnodeDev.setNotifySink( this );
 
+    // Start the camera manager
+    m_cameraMgr.start();
+
+    m_cameraMgr.initCameraList();
+
     // Start up the hnode device
     m_hnodeDev.start();
 
@@ -352,6 +357,76 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
+    // GET "/hnode2/slide-digitizer/cameras"
+    else if( "getCameraList" == opID )
+    {
+        std::cout << "=== Get Capture List Request ===" << std::endl;
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding( true );
+        opData->responseSetContentType( "application/json" );
+
+        // Create a json root object
+        pjs::Array jsRoot;
+
+        // Get the list of camera ids
+        std::vector< std::string > idList;
+
+        m_cameraMgr.getCameraIDList( idList );
+
+        for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
+        {
+            jsRoot.add( *it );
+        }
+          
+        // Render response content
+        std::ostream& ostr = opData->responseSend();
+        try{ 
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+        } catch( ... ) {
+            std::cout << "ERROR: Exception while serializing comment" << std::endl;
+        }
+            
+        // Request was successful
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+    }
+    // GET "/hnode2/slide-digitizer/cameras/{cameraid}"
+    else if( "getCameraInfo" == opID )
+    {
+        std::string cameraID;
+
+        if( opData->getParam( "cameraid", cameraID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "=== Get Camera Info Request (id: " << cameraID << ") ===" << std::endl;
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding( true );
+        opData->responseSetContentType( "application/json" );
+        
+        // Create a json root object
+        pjs::Array jsRoot;
+
+        pjs::Object w1Obj;
+        w1Obj.set( "id", cameraID );
+        w1Obj.set( "color", "black" );
+        jsRoot.add( w1Obj );
+          
+        // Render response content
+        std::ostream& ostr = opData->responseSend();
+        try{ 
+            pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+        } catch( ... ) {
+            std::cout << "ERROR: Exception while serializing comment" << std::endl;
+        }            
+        // Request was successful
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+
+    }    
     // GET "/hnode2/slide-digitizer/captures"
     else if( "getCaptureList" == opID )
     {
@@ -553,6 +628,50 @@ const std::string g_HNode2TestRest = R"(
             }
           }
         }
+      },
+
+      "/hnode2/slide-digitizer/cameras": {
+        "get": {
+          "summary": "Return list of available camera IDs.",
+          "operationId": "getCameraList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+      },
+
+      "/hnode2/slide-digitizer/cameras/{cameraid}": {
+        "get": {
+          "summary": "Get information about a camera.",
+          "operationId": "getCameraInfo",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
       },
 
       "/hnode2/slide-digitizer/captures": {
