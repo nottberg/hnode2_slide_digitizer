@@ -649,7 +649,7 @@ const std::string g_HNode2TestRest = R"(
               "description": "Invalid status value"
             }
           }
-        },
+        }
       },
 
       "/hnode2/slide-digitizer/cameras/{cameraid}": {
@@ -671,7 +671,7 @@ const std::string g_HNode2TestRest = R"(
               "description": "Invalid status value"
             }
           }
-        },
+        }
       },
 
       "/hnode2/slide-digitizer/captures": {
