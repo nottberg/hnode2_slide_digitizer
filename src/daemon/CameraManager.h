@@ -43,7 +43,7 @@ class Camera
         Camera( CameraManager *parent, std::string id );
        ~Camera();
 
-        void setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr );
+        CM_RESULT_T setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr );
 
         std::string getID();
 
@@ -64,6 +64,8 @@ class CameraManager
 
         CM_RESULT_T initCameraList();
         CM_RESULT_T cleanupCameraList();
+
+        std::string getCameraLibraryVersion();
 
         void getCameraIDList( std::vector< std::string > &idList );
 

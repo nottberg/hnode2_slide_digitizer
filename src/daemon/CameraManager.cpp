@@ -12,10 +12,23 @@ Camera::~Camera()
 
 }
 
-void
+CM_RESULT_T
 Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
 {
+    // Save away the library pointer
     m_camPtr = objPtr;
+
+    // Get properties info
+    const libcamera::ControlList &cl = m_camPtr->properties();
+
+    for( libcamera::ControlList::const_iterator it = cl.begin(); it != cl.end(); it++ )
+    {
+        std::cout << "Control - str: " << it->second.toString() << std::endl;
+    }
+
+    // Get controls info
+
+    return CM_RESULT_SUCCESS;
 }
 
 std::string
@@ -100,6 +113,12 @@ CameraManager::cleanupCameraList()
     m_camList.clear();
 
     return CM_RESULT_SUCCESS;
+}
+
+std::string
+CameraManager::getCameraLibraryVersion()
+{
+    return ( m_camMgr ? m_camMgr->version() : "" );
 }
 
 void
