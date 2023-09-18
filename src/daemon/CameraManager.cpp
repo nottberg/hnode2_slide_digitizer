@@ -21,9 +21,11 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     // Get properties info
     const libcamera::ControlList &cl = m_camPtr->properties();
 
+    const libcamera::ControlIdMap *cidMap = cl.idMap();
+
     for( libcamera::ControlList::const_iterator it = cl.begin(); it != cl.end(); it++ )
     {
-        std::cout << "Control - str: " << it->second.toString() << std::endl;
+        std::cout << "Control - name: " << cidMap->at(it->first)->name() << "  val: " << it->second.toString() << std::endl;
     }
 
     // Get controls info
