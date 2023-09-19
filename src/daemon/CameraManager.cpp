@@ -25,10 +25,16 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
 
     for( libcamera::ControlList::const_iterator it = cl.begin(); it != cl.end(); it++ )
     {
-        std::cout << "Control - name: " << cidMap->at(it->first)->name() << "  val: " << it->second.toString() << std::endl;
+        std::cout << "Property - name: " << cidMap->at(it->first)->name() << "  val: " << it->second.toString() << std::endl;
     }
 
     // Get controls info
+    const libcamera::ControlInfoMap &cim = m_camPtr->controls();
+
+    for( libcamera::ControlInfoMap::const_iterator it = cim.begin(); it != cim.end(); it++ )
+    {
+        std::cout << "Control - name: " << it->first->name() << "  val: " << it->second.toString() << std::endl;
+    }
 
     return CM_RESULT_SUCCESS;
 }
