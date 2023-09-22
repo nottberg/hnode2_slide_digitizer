@@ -45,7 +45,7 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     if( !config )
     {
         std::cerr << "Could not generate camera configuration" << std::endl;
-        return;
+        return CM_RESULT_FAILURE;
     }
 
 	const libcamera::StreamFormats &formats = config->at( 0 ).formats();
@@ -53,7 +53,7 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
 	if( !formats.pixelformats().size() )
     {
         std::cerr << "No camera formats" << std::endl;
-        return;
+        return CM_RESULT_FAILURE;
     }
 
 //	auto cfa = m_camPtr->properties().get( properties::draft::ColorFilterArrangement );
