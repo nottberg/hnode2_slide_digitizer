@@ -12,15 +12,40 @@ Camera::~Camera()
 
 }
 
+void
+Camera::printInfo()
+{
+    std::cout << "=== Camera: " << m_modelName << "  (id: " << m_id << ")" << std::endl;
+}
+
 CM_RESULT_T
 Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
 {
     // Save away the library pointer
     m_camPtr = objPtr;
 
-    // Get properties info
+    if( m_camPtr == nullptr )
+        return CM_RESULT_SUCCESS;
+
+    // Get the unique id for this camera.
+    m_id = m_camPtr->id();
+
+    // Get a few well known camera properties info
     const libcamera::ControlList &cl = m_camPtr->properties();
 
+    m_modelName = cl.get( libcamera::properties::Model ).toString();
+
+	libcamera::ControlValue &sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
+	if( sensorSize &&( sensorSize.type() == libcamera::ControlType::ControlTypeSize ) )
+    {
+        std::cout << "SensorSize: " << sensorSize.toString() << std::endl;
+
+        libcamera::Size size;
+        //size = sensorSize
+        //m_arrayWidth = sensorSize.
+    }
+
+#if 0
     const libcamera::ControlIdMap *cidMap = cl.idMap();
 
     for( libcamera::ControlList::const_iterator it = cl.begin(); it != cl.end(); it++ )
@@ -111,6 +136,7 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
 
 	std::cout << std::endl;
 	m_camPtr->release();
+#endif
 
     return CM_RESULT_SUCCESS;
 }

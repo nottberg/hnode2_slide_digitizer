@@ -27,14 +27,33 @@ typedef enum CameraManagerResultEnum
     CM_RESULT_FAILURE
 } CM_RESULT_T;
 
-class CameraCapabilities
+class CameraFormats
 {
     public:
-        CameraCapabilities();
-       ~CameraCapabilities();
+        CameraFormats();
+       ~CameraFormats();
 
     private:
 
+        // The format id string.
+        std::string m_id;
+
+        // A list of supported frame sizes.
+        std::vector< std::pair< uint, uint > > m_frameSizes;
+};
+
+class CameraControl
+{
+    public:
+        CameraControl();
+       ~CameraControl();
+
+    private:
+
+        uint        m_id;
+        std::string m_name;
+
+        std::string m_possibleValStr;
 };
 
 class Camera
@@ -47,10 +66,27 @@ class Camera
 
         std::string getID();
 
+        void printInfo();
+
     private:
 
+        // Pointer to the libcamera library object
         std::shared_ptr< libcamera::Camera > m_camPtr;
 
+        // The unique id
+        std::string m_id;
+
+        // Camera properties
+        std::string m_modelName;
+
+        uint m_arrayWidth;
+        uint m_arrayHeight;
+
+        // Array of possible camera controls
+        std::vector< CameraControl > m_controlList;
+
+        // Array of camera formats
+        std::vector< CameraFormats > m_formatList;
 };
 
 class CameraManager
