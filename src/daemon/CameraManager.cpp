@@ -36,8 +36,8 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     auto model = cl.get( libcamera::properties::Model );
     m_modelName = model ? *model : "";
 
-	const libcamera::ControlValue &sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
-	if( sensorSize &&( sensorSize.type() == libcamera::ControlType::ControlTypeSize ) )
+	auto sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
+	if( sensorSize && ( sensorSize.type() == libcamera::ControlType::ControlTypeRectangle ) )
     {
         std::cout << "SensorSize: " << sensorSize.toString() << std::endl;
 
