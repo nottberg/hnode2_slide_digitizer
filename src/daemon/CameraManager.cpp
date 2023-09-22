@@ -33,9 +33,10 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     // Get a few well known camera properties info
     const libcamera::ControlList &cl = m_camPtr->properties();
 
-    m_modelName = cl.get( libcamera::properties::Model ).toString();
+    auto model = cl.get( libcamera::properties::Model );
+    m_modelName = model ? *model : "";
 
-	libcamera::ControlValue &sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
+	const libcamera::ControlValue &sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
 	if( sensorSize &&( sensorSize.type() == libcamera::ControlType::ControlTypeSize ) )
     {
         std::cout << "SensorSize: " << sensorSize.toString() << std::endl;
