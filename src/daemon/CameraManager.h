@@ -27,11 +27,11 @@ typedef enum CameraManagerResultEnum
     CM_RESULT_FAILURE
 } CM_RESULT_T;
 
-class CameraFormats
+class CameraFormat
 {
     public:
-        CameraFormats();
-       ~CameraFormats();
+        CameraFormat();
+       ~CameraFormat();
 
     private:
 
@@ -86,7 +86,7 @@ class Camera
         std::vector< CameraControl > m_controlList;
 
         // Array of camera formats
-        std::vector< CameraFormats > m_formatList;
+        std::vector< CameraFormat > m_formatList;
 };
 
 class CameraManager

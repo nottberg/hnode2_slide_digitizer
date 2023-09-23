@@ -2,6 +2,26 @@
 
 #include "CameraManager.h"
 
+CameraControl::CameraControl()
+{
+
+}
+
+CameraControl::~CameraControl()
+{
+
+}
+
+CameraFormat::CameraFormat()
+{
+
+}
+
+CameraFormat::~CameraFormat()
+{
+
+}
+
 Camera::Camera( CameraManager *parent, std::string id )
 {
 
@@ -37,9 +57,9 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     m_modelName = model ? *model : "";
 
 	auto sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
-	if( sensorSize && ( sensorSize.type() == libcamera::ControlType::ControlTypeRectangle ) )
+	if( sensorSize ) // && ( sensorSize.type() == libcamera::ControlType::ControlTypeRectangle ) )
     {
-        std::cout << "SensorSize: " << sensorSize.toString() << std::endl;
+        std::cout << "SensorSize: " << (*sensorSize)[0].toString() << std::endl;
 
         libcamera::Size size;
         //size = sensorSize
