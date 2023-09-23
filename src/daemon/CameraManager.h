@@ -66,9 +66,14 @@ class Camera
 
         std::string getID();
 
+        std::string getLibraryInfoJSONStr();
+
         void printInfo();
 
     private:
+
+        // The Camera Manager parent
+        CameraManager *m_parent;
 
         // Pointer to the libcamera library object
         std::shared_ptr< libcamera::Camera > m_camPtr;
@@ -105,11 +110,13 @@ class CameraManager
 
         void getCameraIDList( std::vector< std::string > &idList );
 
+        std::shared_ptr< Camera > lookupCameraByID( std::string id );
+
     private:
 
         std::unique_ptr< libcamera::CameraManager > m_camMgr;
 
-        std::vector< std::shared_ptr< Camera > > m_camList;
+        std::map< std::string, std::shared_ptr< Camera > > m_camMap;
 };
 
 #endif //__CAMERA_MANAGER_H__
