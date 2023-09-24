@@ -44,7 +44,7 @@ Camera::~Camera()
 void
 Camera::printInfo()
 {
-    std::cout << "=== Camera: " << m_modelName << "  (id: " << m_id << ")" << std::endl;
+    std::cout << "=== Camera: " << m_modelName << "  (id: " << m_libID << ")" << std::endl;
 }
 
 CM_RESULT_T
@@ -57,7 +57,7 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
         return CM_RESULT_SUCCESS;
 
     // Get the unique id for this camera.
-    // m_id = m_camPtr->id();
+    m_libID = m_camPtr->id();
 
     // Get a few well known camera properties info
     const libcamera::ControlList &cl = m_camPtr->properties();
@@ -192,6 +192,7 @@ Camera::getLibraryInfoJSONStr()
     jsRoot.set( "library-version", m_parent->getCameraLibraryVersion() );
 
     jsCamera.set( "id", m_id );
+    jsCamera.set( "libID", m_libID );
     jsCamera.set( "model", m_modelName );
 
     // Get a few well known camera properties info
@@ -357,6 +358,8 @@ CameraManager::stop()
 CM_RESULT_T
 CameraManager::initCameraList()
 {
+    char tmpID[64];
+
     // Cleanup and previous camera list
     cleanupCameraList();
 
@@ -369,17 +372,20 @@ CameraManager::initCameraList()
 	std::sort( cameras.begin(), cameras.end(), [](auto l, auto r) { return l->id() > r->id(); } );
 
     // Build the local list of available cameras
+    uint camIndx = 0;
     for( std::vector< std::shared_ptr< libcamera::Camera > >::iterator it = cameras.begin(); it != cameras.end(); it++ )
     {
-    	std::string const &camID = it->get()->id();
+        sprintf( tmpID, "cam%u", camIndx );
 
-        std::cout << "Adding camera - id: " << camID << std::endl;
+        std::cout << "Adding camera - id: " << tmpID << std::endl;
 
-        std::shared_ptr< Camera > camPtr = std::make_shared< Camera >( this, camID );
+        std::shared_ptr< Camera > camPtr = std::make_shared< Camera >( this, tmpID );
         
         camPtr->setLibraryObject( *it );
 
-        m_camMap.insert( std::pair< std::string, std::shared_ptr< Camera > >( camID, camPtr ) );
+        m_camMap.insert( std::pair< std::string, std::shared_ptr< Camera > >( tmpID, camPtr ) );
+
+        camIndx += 1;
     }
 
     return CM_RESULT_SUCCESS;

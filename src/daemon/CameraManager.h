@@ -75,11 +75,14 @@ class Camera
         // The Camera Manager parent
         CameraManager *m_parent;
 
+        // The unique id
+        std::string m_id;
+
         // Pointer to the libcamera library object
         std::shared_ptr< libcamera::Camera > m_camPtr;
 
-        // The unique id
-        std::string m_id;
+        // The library camera id
+        std::string m_libID;
 
         // Camera properties
         std::string m_modelName;
