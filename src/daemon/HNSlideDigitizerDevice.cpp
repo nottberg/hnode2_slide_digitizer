@@ -425,8 +425,49 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         }            
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+    }
+    // GET "/hnode2/slide-digitizer/cameras/{cameraid}/library-info"
+    else if( "getCameraLibraryInfo" == opID )
+    {
+        std::string cameraID;
 
-    }    
+        if( opData->getParam( "cameraid", cameraID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "=== Get Camera Library Info Request (id: " << cameraID << ") ===" << std::endl;
+
+        // Lookup the camera
+        std::shared_ptr< Camera > camPtr = m_cameraMgr.lookupCameraByID( cameraID );
+
+        if( camPtr == nullptr )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
+            opData->responseSend();
+            return; 
+        }
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding( true );
+        opData->responseSetContentType( "application/json" );
+        
+        // Get the response json as a string.
+        std::string jsonStr = camPtr->getLibraryInfoJSONStr();
+
+        // Render response content
+        std::ostream& ostr = opData->responseSend();
+        try{ 
+            ostr << jsonStr;
+        } catch( ... ) {
+            std::cout << "ERROR: Exception while serializing comment" << std::endl;
+        }
+
+        // Request was successful
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+    }
     // GET "/hnode2/slide-digitizer/captures"
     else if( "getCaptureList" == opID )
     {
@@ -656,6 +697,28 @@ const std::string g_HNode2TestRest = R"(
         "get": {
           "summary": "Get information about a camera.",
           "operationId": "getCameraInfo",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/slide-digitizer/cameras/{cameraid}/library-info": {
+        "get": {
+          "summary": "Get underlying library information about a camera",
+          "operationId": "getCameraLibraryInfo",
           "responses": {
             "200": {
               "description": "successful operation",
