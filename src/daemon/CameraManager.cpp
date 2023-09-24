@@ -185,6 +185,7 @@ Camera::getLibraryInfoJSONStr()
     pjs::Object jsCamera;
     pjs::Array jsProperties;
     pjs::Array jsControls;
+    pjs::Array jsStreams;
 
     if( m_camPtr == nullptr )
         return "";
@@ -233,31 +234,60 @@ Camera::getLibraryInfoJSONStr()
     }
     jsCamera.set( "controls", jsControls );
 
-    // Get supported streams
-    const std::set< libcamera::Stream *> &streams = m_camPtr->streams();
+    // Get Raw stream info
+    pjs::Object jsRawStream;
+    pjs::Array jsRSFormats;
 
-    for( std::set< libcamera::Stream *>::iterator it = streams.begin(); it != streams.end(); it++ )
+    jsRawStream.set( "type", (uint) libcamera::StreamRole::Raw );
+    jsRawStream.set( "typeStr", "Raw" );
+
+	std::unique_ptr< libcamera::CameraConfiguration > config = m_camPtr->generateConfiguration( {libcamera::StreamRole::Raw} );
+	
+    if( config )
     {
-        const libcamera::StreamConfiguration &config = (*it)->configuration();
+	    const libcamera::StreamFormats &formats = config->at( 0 ).formats();
 
-        std::cout << "Stream Config: " << config.toString() << std::endl;
+	    if( formats.pixelformats().size() )
+        {
+	        std::cout << "    Modes: ";
+	        unsigned int i = 0;
+	        for( const auto &pix : formats.pixelformats() )
+	        {
+                pjs::Object jsFormat;
+
+                jsFormat.set( "mode", pix.toString() );
+
+                pjs::Array jsFrameSizes;
+
+		        unsigned int num = formats.sizes( pix ).size();
+		        for( const auto &size : formats.sizes( pix ) )
+		        {
+                    pjs::Object jsFrameSize;
+                    jsFrameSize.set( "width", size.width );
+                    jsFrameSize.set( "height", size.height );
+                    jsFrameSizes.add( jsFrameSize );
+                }
+                jsFormat.set( "frameSizes", jsFrameSizes );
+
+                jsRSFormats.add( jsFormat );
+            }
+        }
+
     }
 
+    jsRawStream.set( "formats", jsRSFormats );
+
+    jsStreams.add( jsRawStream );
+
+    jsCamera.set( "streams", jsStreams );
+
+    // Add the camera object to the returned data
     jsRoot.set( "camera", jsCamera );
 
     // Done interrogating camera
 	m_camPtr->release();
 
 #if 0
-    // Get controls info
-    const libcamera::ControlInfoMap &cim = m_camPtr->controls();
-
-    for( libcamera::ControlInfoMap::const_iterator it = cim.begin(); it != cim.end(); it++ )
-    {
-        std::cout << "Control - name: " << it->first->name() << "  val: " << it->second.toString() << std::endl;
-    }
-
-
 
 	std::unique_ptr< libcamera::CameraConfiguration > config = m_camPtr->generateConfiguration( {libcamera::StreamRole::StillCapture} );
 	
