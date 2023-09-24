@@ -218,8 +218,8 @@ Camera::getLibraryInfoJSONStr()
     for( libcamera::ControlInfoMap::const_iterator it = cim.begin(); it != cim.end(); it++ )
     {
         pjs::Object jsControl;
-        jsControl.set( "id", it->first->id );
-        jsControl.set( "type", it->first->type );
+        jsControl.set( "id", it->first->id() );
+        jsControl.set( "type", it->first->type() );
         jsControl.set( "name", it->first->name() );
         jsControl.set( "descriptive-value", it->second.toString() );
 
