@@ -241,16 +241,14 @@ Camera::getLibraryInfoJSONStr()
     jsRawStream.set( "type", (uint) libcamera::StreamRole::Raw );
     jsRawStream.set( "typeStr", "Raw" );
 
-	std::unique_ptr< libcamera::CameraConfiguration > config = m_camPtr->generateConfiguration( {libcamera::StreamRole::Raw} );
+	std::unique_ptr< libcamera::CameraConfiguration > rconfig = m_camPtr->generateConfiguration( {libcamera::StreamRole::Raw} );
 	
-    if( config )
+    if( rconfig )
     {
-	    const libcamera::StreamFormats &formats = config->at( 0 ).formats();
+	    const libcamera::StreamFormats &formats = rconfig->at( 0 ).formats();
 
 	    if( formats.pixelformats().size() )
         {
-	        std::cout << "    Modes: ";
-	        unsigned int i = 0;
 	        for( const auto &pix : formats.pixelformats() )
 	        {
                 pjs::Object jsFormat;
@@ -278,6 +276,49 @@ Camera::getLibraryInfoJSONStr()
     jsRawStream.set( "formats", jsRSFormats );
 
     jsStreams.add( jsRawStream );
+
+    // Get Raw stream info
+    pjs::Object jsStillStream;
+    pjs::Array jsStillFormats;
+
+    jsStillStream.set( "type", (uint) libcamera::StreamRole::StillCapture );
+    jsStillStream.set( "typeStr", "StillCapture" );
+
+	std::unique_ptr< libcamera::CameraConfiguration > sconfig = m_camPtr->generateConfiguration( {libcamera::StreamRole::StillCapture} );
+	
+    if( sconfig )
+    {
+	    const libcamera::StreamFormats &formats = sconfig->at( 0 ).formats();
+
+	    if( formats.pixelformats().size() )
+        {
+	        for( const auto &pix : formats.pixelformats() )
+	        {
+                pjs::Object jsFormat;
+
+                jsFormat.set( "mode", pix.toString() );
+
+                pjs::Array jsFrameSizes;
+
+		        unsigned int num = formats.sizes( pix ).size();
+		        for( const auto &size : formats.sizes( pix ) )
+		        {
+                    pjs::Object jsFrameSize;
+                    jsFrameSize.set( "width", size.width );
+                    jsFrameSize.set( "height", size.height );
+                    jsFrameSizes.add( jsFrameSize );
+                }
+                jsFormat.set( "frameSizes", jsFrameSizes );
+
+                jsStillFormats.add( jsFormat );
+            }
+        }
+
+    }
+
+    jsStillStream.set( "formats", jsStillFormats );
+
+    jsStreams.add( jsStillStream );
 
     jsCamera.set( "streams", jsStreams );
 
