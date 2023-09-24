@@ -219,7 +219,7 @@ Camera::getLibraryInfoJSONStr()
     {
         pjs::Object jsControl;
         jsControl.set( "id", it->first->id() );
-        jsControl.set( "type", it->first->type() );
+        jsControl.set( "type", (uint) it->first->type() );
         jsControl.set( "name", it->first->name() );
         jsControl.set( "descriptive-value", it->second.toString() );
 
