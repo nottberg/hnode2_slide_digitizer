@@ -319,8 +319,8 @@ Camera::getLibraryInfoJSONStr()
     std::stringstream ostr;
     try{ 
         pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
-    } catch( ... ) {
-        std::cerr << "ERROR: Exception while serializing library info" << std::endl;
+    } catch( const std::exception &err ) {
+        std::cerr << "ERROR: Exception while serializing library info: " << err.what() << std::endl;
         return "";
     } 
 
