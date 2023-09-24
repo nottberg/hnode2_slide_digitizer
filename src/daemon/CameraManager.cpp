@@ -184,6 +184,7 @@ Camera::getLibraryInfoJSONStr()
     pjs::Object jsRoot;
     pjs::Object jsCamera;
     pjs::Array jsProperties;
+    pjs::Array jsControls;
 
     if( m_camPtr == nullptr )
         return "";
@@ -195,7 +196,7 @@ Camera::getLibraryInfoJSONStr()
     jsCamera.set( "libID", m_libID );
     jsCamera.set( "model", m_modelName );
 
-    // Get a few well known camera properties info
+    // Get camera properties info
     const libcamera::ControlList &cl = m_camPtr->properties();
 
     const libcamera::ControlIdMap *cidMap = cl.idMap();
@@ -206,19 +207,29 @@ Camera::getLibraryInfoJSONStr()
         jsProperty.set( "id", it->first );
         jsProperty.set( "name", cidMap->at(it->first)->name() );
         jsProperty.set( "descriptive-value", it->second.toString() );
+
+        jsProperties.add( jsProperty );
     }
     jsCamera.set( "properties", jsProperties );
+
+    // Get camera controls info
+    const libcamera::ControlInfoMap &cim = m_camPtr->controls();
+
+    for( libcamera::ControlInfoMap::const_iterator it = cim.begin(); it != cim.end(); it++ )
+    {
+        pjs::Object jsControl;
+        jsControl.set( "id", it->first->id );
+        jsControl.set( "type", it->first->type );
+        jsControl.set( "name", it->first->name() );
+        jsControl.set( "descriptive-value", it->second.toString() );
+
+        jsControls.add( jsControl );
+    }
+    jsCamera.set( "controls", jsControls );
 
     jsRoot.set( "camera", jsCamera );
 
 #if 0
-    const libcamera::ControlIdMap *cidMap = cl.idMap();
-
-    for( libcamera::ControlList::const_iterator it = cl.begin(); it != cl.end(); it++ )
-    {
-        std::cout << "Property - name: " << cidMap->at(it->first)->name() << "  val: " << it->second.toString() << std::endl;
-    }
-
     // Get controls info
     const libcamera::ControlInfoMap &cim = m_camPtr->controls();
 
