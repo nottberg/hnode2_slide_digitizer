@@ -196,6 +196,12 @@ Camera::getLibraryInfoJSONStr()
     jsCamera.set( "libID", m_libID );
     jsCamera.set( "model", m_modelName );
 
+	// Disable any libcamera logging for this bit.
+	//logSetTarget(LoggingTargetNone);
+
+    // Aquire the camera while we interrogate it
+	m_camPtr->acquire();
+
     // Get camera properties info
     const libcamera::ControlList &cl = m_camPtr->properties();
 
@@ -227,7 +233,20 @@ Camera::getLibraryInfoJSONStr()
     }
     jsCamera.set( "controls", jsControls );
 
+    // Get supported streams
+    const std::set< libcamera::Stream *> &streams = m_camPtr->streams();
+
+    for( std::set< libcamera::Stream *>::iterator it = streams.begin(); it != streams.end(); it++ )
+    {
+        const libcamera::StreamConfiguration &config = (*it)->configuration();
+
+        std::cout << "Stream Config: " << config.toString() << std::endl;
+    }
+
     jsRoot.set( "camera", jsCamera );
+
+    // Done interrogating camera
+	m_camPtr->release();
 
 #if 0
     // Get controls info
@@ -238,9 +257,7 @@ Camera::getLibraryInfoJSONStr()
         std::cout << "Control - name: " << it->first->name() << "  val: " << it->second.toString() << std::endl;
     }
 
-	// Disable any libcamera logging for this bit.
-	//logSetTarget(LoggingTargetNone);
-	m_camPtr->acquire();
+
 
 	std::unique_ptr< libcamera::CameraConfiguration > config = m_camPtr->generateConfiguration( {libcamera::StreamRole::StillCapture} );
 	
