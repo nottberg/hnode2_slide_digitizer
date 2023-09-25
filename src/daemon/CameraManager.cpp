@@ -65,14 +65,13 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     auto model = cl.get( libcamera::properties::Model );
     m_modelName = model ? *model : "";
 
-	auto sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
+	std::optional< libcamera::Span< const libcamera::Rectangle > > sensorSize = cl.get( libcamera::properties::PixelArrayActiveAreas );
 	if( sensorSize ) // && ( sensorSize.type() == libcamera::ControlType::ControlTypeRectangle ) )
     {
-        std::cout << "SensorSize: " << (*sensorSize)[0].toString() << std::endl;
+        m_arrayHeight = (*sensorSize)[0].height;
+        m_arrayWidth = (*sensorSize)[0].width;
 
-        libcamera::Size size;
-        //size = sensorSize
-        //m_arrayWidth = sensorSize.
+        std::cout << "SensorSize: " << m_arrayWidth << "x" << m_arrayHeight << std::endl;
     }
 
 #if 0
@@ -174,7 +173,7 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
 std::string
 Camera::getID()
 {
-    return ( m_camPtr ? m_camPtr->id() : "" );
+    return m_id;
 }
 
 std::string
@@ -327,81 +326,6 @@ Camera::getLibraryInfoJSONStr()
 
     // Done interrogating camera
 	m_camPtr->release();
-
-#if 0
-
-	std::unique_ptr< libcamera::CameraConfiguration > config = m_camPtr->generateConfiguration( {libcamera::StreamRole::StillCapture} );
-	
-    if( !config )
-    {
-        std::cerr << "Could not generate camera configuration" << std::endl;
-        return CM_RESULT_FAILURE;
-    }
-
-	const libcamera::StreamFormats &formats = config->at( 0 ).formats();
-
-	if( !formats.pixelformats().size() )
-    {
-        std::cerr << "No camera formats" << std::endl;
-        return CM_RESULT_FAILURE;
-    }
-
-//	auto cfa = m_camPtr->properties().get( properties::draft::ColorFilterArrangement );
-//	if( cfa && cfa_map.count( *cfa ) )
-//		sensor_props << cfa_map.at( *cfa ) << " ";
-
-//		sensor_props.seekp(-1, sensor_props.cur);
-//		sensor_props << "] (" << cam->id() << ")";
-//		std::cout << sensor_props.str() << std::endl;
-
-//		ControlInfoMap control_map;
-//		Size max_size;
-		//PixelFormat max_fmt;
-
-	std::cout << "    Modes: ";
-	unsigned int i = 0;
-	for( const auto &pix : formats.pixelformats() )
-	{
-		if( i++ ) std::cout << "           ";
-		std::string mode( "'" + pix.toString() + "' : " );
-		std::cout << mode;
-
-		unsigned int num = formats.sizes( pix ).size();
-		for( const auto &size : formats.sizes( pix ) )
-		{
-		    std::cout << size.toString() << " ";
-
-#if 0
-				config->at(0).size = size;
-				config->at(0).pixelFormat = pix;
-				config->validate();
-
-				m_camPtr->configure( config.get() );
-
-				if( size > max_size )
-				{
-					control_map = cam->controls();
-					max_fmt = pix;
-					max_size = size;
-				}
-
-				auto fd_ctrl = cam->controls().find(&controls::FrameDurationLimits);
-				auto crop_ctrl = cam->properties().get(properties::ScalerCropMaximum);
-				double fps = fd_ctrl == cam->controls().end() ? NAN : (1e6 / fd_ctrl->second.min().get<int64_t>());
-				std::cout << std::fixed << std::setprecision(2) << "[" << fps << " fps - " << crop_ctrl->toString() << " crop" << "]";
-				if( --num )
-				{
-					std::cout << std::endl;
-					for (std::size_t s = 0; s < mode.length() + 11; std::cout << " ", s++);
-				}
-#endif
-		}
-		std::cout << std::endl;
-	}
-
-	std::cout << std::endl;
-	m_camPtr->release();
-#endif
 
     // Render response content
     std::stringstream ostr;
