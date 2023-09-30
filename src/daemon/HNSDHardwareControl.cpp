@@ -1,9 +1,9 @@
 
 #include "HNSDHardwareControl.h"
 
-HNSDHardwareControl::HNSDHardwareControl( uint notificationFD )
+HNSDHardwareControl::HNSDHardwareControl()
 {
-    m_notifyFD = notificationFD;
+    m_notifyFD = 0;
 
     m_state = HNSD_HWSTATE_NOTSET;
 }
@@ -11,6 +11,18 @@ HNSDHardwareControl::HNSDHardwareControl( uint notificationFD )
 HNSDHardwareControl::~HNSDHardwareControl()
 {
 
+}
+
+void
+HNSDHardwareControl::setNotificationFD( uint notificationFD )
+{
+    m_notifyFD = notificationFD;
+}
+
+uint
+HNSDHardwareControl::getNotificationFD()
+{
+    return m_notifyFD;
 }
 
 HNSD_HWSTATE_T 

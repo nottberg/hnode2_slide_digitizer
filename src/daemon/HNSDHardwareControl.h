@@ -32,10 +32,14 @@ typedef enum HNSDHardwareStateEnum
 class HNSDHardwareControl 
 {
     public:
-        HNSDHardwareControl( uint notificationFD );
+        HNSDHardwareControl();
        ~HNSDHardwareControl();
 
+        void setNotificationFD( uint notificationFD );
+
         HNSD_HWSTATE_T getState();
+
+        uint getNotificationFD();
 
         HNSD_HC_RESULT_T startCapture();
 
