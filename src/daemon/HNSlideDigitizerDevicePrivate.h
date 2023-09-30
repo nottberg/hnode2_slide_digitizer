@@ -13,6 +13,8 @@
 #include <hnode2/HNReqWaitQueue.h>
 
 #include "CameraManager.h"
+#include "HNSDAction.h"
+#include "HNSDHardwareControl.h"
 
 #define HNODE_SLIDE_DIGITIZER_DEVTYPE   "hnode2-slide-digitizer-device"
 
