@@ -22,6 +22,7 @@
 #include <hnode2/HNodeDevice.h>
 
 #include "CameraThread.h"
+#include "HNSDAction.h"
 #include "HNSlideDigitizerDevicePrivate.h"
 
 using namespace Poco::Util;
@@ -80,6 +81,9 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     if( _instancePresent == true )
         m_instanceName = _instance;
 
+    // Initialize the capture queue
+    m_captureQueue.init();
+
     m_hnodeDev.setDeviceType( HNODE_TEST_DEVTYPE );
     m_hnodeDev.setInstance( m_instanceName );
 
@@ -122,6 +126,14 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
 
     //m_healthStateSeq = 0;
     //generateNewHealthState();
+
+    // Hook the local action queue into the event loop
+    if( m_testDeviceEvLoop.addFDToEPoll( m_captureQueue.getEventFD() ) != HNEP_RESULT_SUCCESS )
+    {
+        // Failed to add client socket.
+        std::cerr << "ERROR: Failed to add local capture queue to event loop." << std::endl;
+        return Application::EXIT_SOFTWARE;
+    }
 
     // Start accepting device notifications
     m_hnodeDev.setNotifySink( this );
@@ -307,6 +319,18 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
         m_configUpdateTrigger.reset();
         updateConfig();
     }
+    else if( sfd == m_captureQueue.getEventFD() )
+    {
+        // Verify that we can handle a new action,
+        // otherwise just spin.
+        std::cout << "Capture Queue: " << getState() << std::endl;
+        //if( getState() != HNID_STATE_READY )
+        //    return;
+
+        // Start the new action
+        startCapture();
+    }
+
 }
 
 void
@@ -323,9 +347,84 @@ HNSlideDigitizerDevice::hndnConfigChange( HNodeDevice *parent )
     m_configUpdateTrigger.trigger();
 }
 
+void
+HNIrrigationDevice::startAction()
+{
+    //HNSWDPacketClient packet;
+    HNID_ACTBIT_T  actBits = HNID_ACTBIT_CLEAR;
+
+    // Verify that we are in a state that will allow actions to start
+//    if( getState() != HNID_STATE_READY )
+//    {
+//        return;
+//    }
+
+    // Pop the action from the queue
+    m_curAction = ( HNSDAction* ) m_actionQueue.aquireRecord();
+
+    std::cout << "Action aquired - type: " << m_curAction->getType()  << "  thread: " << std::this_thread::get_id() << std::endl;
+
+    switch( m_curAction->getType() )
+    {
+        case HNSD_AR_TYPE_START_SINGLE_CAPTURE:
+        {
+            // Get current device status as JSON
+            //if( buildIrrigationStatusResponse( m_curAction->refRspStream() ) != HNIS_RESULT_SUCCESS )
+            //{
+                //opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            //    actBits = HNID_ACTBIT_ERROR;
+            //    break;
+            //}
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+    }
+
+    // The configuration was changed so commit
+    // it to persistent copy
+    if( actBits & HNID_ACTBIT_UPDATE )
+    {
+        // Commit config update
+//        updateConfig();
+    }
+
+    // Send a request down to the switch daemon
+    if( actBits & HNID_ACTBIT_SENDREQ )
+    {
+//        std::cout << "Sending a switch deamon request..." << "  thread: " << std::this_thread::get_id() << std::endl;
+//        packet.sendAll( m_swdFD );
+    }
+
+    // There was an error, complete with error
+    if( actBits & HNID_ACTBIT_ERROR )
+    {
+        std::cout << "Failing action: " << m_curAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+
+        // Signal failure
+        m_curAction->complete( false );
+        m_curAction = NULL;
+        return;
+    }
+
+    // Request has been completed successfully
+    if( actBits & HNID_ACTBIT_COMPLETE )
+    {
+        std::cout << "Completing action: " << m_curAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+
+        // Done with this request
+        m_curAction->complete( true );
+        m_curAction = NULL;
+    }
+    
+}
+
 void 
 HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData )
 {
+    HNSDAction action;
+
     std::cout << "HNSlideDigitizerDevice::dispatchEP() - entry" << std::endl;
     std::cout << "  dispatchID: " << opData->getDispatchID() << std::endl;
     std::cout << "  opID: " << opData->getOpID() << std::endl;
@@ -506,6 +605,14 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
+    // POST "/hnode2/slide-digitizer/captures"
+    else if( "startCapture" == opID )
+    {
+        action.setType( HNSD_AR_TYPE_START_SINGLE_CAPTURE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeStartCapture( bodyStream );
+    }    
     // GET "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "getCaptureInfo" == opID )
     {

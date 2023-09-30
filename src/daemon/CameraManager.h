@@ -18,6 +18,8 @@
 #include <libcamera/request.h>
 #include <libcamera/property_ids.h>
 
+#include <hnode2/HNReqWaitQueue.h>
+
 // Forward declaration
 class CameraManager;
 
@@ -56,6 +58,14 @@ class CameraControl
         std::string m_possibleValStr;
 };
 
+typedef enum CameraSupportedStillCaptureModeEnum
+{
+    CS_STILLMODE_NOTSET,
+    CS_STILLMODE_DEFAULT,
+    CS_STILLMODE_YUV420,
+    CS_STILLMODE_YUYV
+} CS_STILLMODE_T;
+
 class Camera
 {
     public:
@@ -63,6 +73,8 @@ class Camera
        ~Camera();
 
         CM_RESULT_T setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr );
+
+        CM_RESULT_T setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height );
 
         std::string getID();
 
@@ -90,11 +102,38 @@ class Camera
         uint m_arrayWidth;
         uint m_arrayHeight;
 
+        // Selected mode info
+        CS_STILLMODE_T m_captureMode;
+        uint m_captureWidth;
+        uint m_captureHeight;
+
         // Array of possible camera controls
         std::vector< CameraControl > m_controlList;
 
         // Array of camera formats
         std::vector< CameraFormat > m_formatList;
+};
+
+typedef enum CameraCaptureStateEnum
+{
+    CCSTATE_NOTSET,
+    CCSTATE_CAPTURE_RUNNING,
+    CCSTATE_CAPTURE_COMPLETE
+} CCSTATE_T;
+
+class CameraCapture : public HNReqWaitAction
+{
+    public:
+        CameraCapture( std::string id );
+       ~CameraCapture();
+
+        CM_RESULT_T startCapture( std::shared_ptr< Camera > camera );
+
+    private:
+
+        // The capture id
+        std::string m_id;
+
 };
 
 class CameraManager
@@ -120,6 +159,9 @@ class CameraManager
         std::unique_ptr< libcamera::CameraManager > m_camMgr;
 
         std::map< std::string, std::shared_ptr< Camera > > m_camMap;
+
+        std::map< std::string, std::shared_ptr< CameraCapture > > m_captureMap;
+
 };
 
 #endif //__CAMERA_MANAGER_H__

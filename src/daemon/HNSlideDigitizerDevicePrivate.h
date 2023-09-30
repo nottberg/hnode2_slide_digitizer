@@ -14,7 +14,7 @@
 
 #include "CameraManager.h"
 
-#define HNODE_TEST_DEVTYPE   "hnode2-slide-digitizer-device"
+#define HNODE_SLIDE_DIGITIZER_DEVTYPE   "hnode2-slide-digitizer-device"
 
 typedef enum HNSlideDigitizerDeviceResultEnum
 {
@@ -23,6 +23,18 @@ typedef enum HNSlideDigitizerDeviceResultEnum
   HNSDD_RESULT_BAD_REQUEST,
   HNSDD_RESULT_SERVER_ERROR
 }HNSDD_RESULT_T;
+
+typedef enum HNSlideDigitizerDeviceStateEnum
+{
+  HNSD_DEVSTATE_NOTSET,
+  HNSD_DEVSTATE_INIT,
+  HNSD_DEVSTATE_IDLE,
+  HNSD_DEVSTATE_CAPTURING,
+  HNSD_DEVSTATE_IMGPROC,
+  HNSD_DEVSTATE_CAROSEL_CAPTURING,
+  HNSD_DEVSTATE_CAROSEL_IMGPROC,
+  HNSD_DEVSTATE_CAROSEL_ADVANCING
+}HNSD_DEVSTATE_T;
 
 class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNDEventNotifyInf, public HNEPLoopCallbacks 
 {
@@ -59,6 +71,14 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNEPLoop m_testDeviceEvLoop;
 
         CameraManager m_cameraMgr;
+
+        HNSD_DEVSTATE_T  m_devState;
+
+        HNSDHardwareControl m_hardwareCtrl;
+        int m_hardwareNotifyFD;
+
+        HNSDAction     *m_curUserAction;
+        HNReqWaitQueue  m_userActionQueue;
 
         // Format string codes
         uint m_errStrCode;
