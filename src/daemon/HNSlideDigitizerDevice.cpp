@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/eventfd.h>
 
 #include <iostream>
 #include <sstream>
@@ -81,10 +82,16 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     if( _instancePresent == true )
         m_instanceName = _instance;
 
-    // Initialize the capture queue
-    m_captureQueue.init();
+    m_devState = HNSD_DEVSTATE_INIT;
 
-    m_hnodeDev.setDeviceType( HNODE_TEST_DEVTYPE );
+    // Initialize the capture queue
+    m_curUserAction = NULL;
+    m_userActionQueue.init();
+
+    // Initialize the hardware control object
+    m_hardwareCtrl.init( &m_hardwareNotifyTrigger );
+
+    m_hnodeDev.setDeviceType( HNODE_SLIDE_DIGITIZER_DEVTYPE );
     m_hnodeDev.setInstance( m_instanceName );
 
     HNDEndpoint hndEP;
@@ -109,6 +116,7 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_testDeviceEvLoop.setup( this );
 
     m_testDeviceEvLoop.setupTriggerFD( m_configUpdateTrigger );
+    m_testDeviceEvLoop.setupTriggerFD( m_hardwareNotifyTrigger );
 
     // Register some format strings
     m_hnodeDev.registerFormatString( "Error: %u", m_errStrCode );
@@ -128,7 +136,7 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     //generateNewHealthState();
 
     // Hook the local action queue into the event loop
-    if( m_testDeviceEvLoop.addFDToEPoll( m_captureQueue.getEventFD() ) != HNEP_RESULT_SUCCESS )
+    if( m_testDeviceEvLoop.addFDToEPoll( m_userActionQueue.getEventFD() ) != HNEP_RESULT_SUCCESS )
     {
         // Failed to add client socket.
         std::cerr << "ERROR: Failed to add local capture queue to event loop." << std::endl;
@@ -146,12 +154,20 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     // Start up the hnode device
     m_hnodeDev.start();
 
+    m_devState = HNSD_DEVSTATE_IDLE;
+
     // Start event processing loop
     m_testDeviceEvLoop.run();
 
     waitForTerminationRequest();
 
     return Application::EXIT_OK;
+}
+
+HNSD_DEVSTATE_T
+HNSlideDigitizerDevice::getState()
+{
+    return m_devState;
 }
 
 #if 0
@@ -225,7 +241,7 @@ HNSlideDigitizerDevice::configExists()
 {
     HNodeConfigFile cfgFile;
 
-    return cfgFile.configExists( HNODE_TEST_DEVTYPE, m_instanceName );
+    return cfgFile.configExists( HNODE_SLIDE_DIGITIZER_DEVTYPE, m_instanceName );
 }
 
 HNSDD_RESULT_T
@@ -239,7 +255,7 @@ HNSlideDigitizerDevice::initConfig()
     cfg.debugPrint(2);
     
     std::cout << "Saving config..." << std::endl;
-    if( cfgFile.saveConfig( HNODE_TEST_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
+    if( cfgFile.saveConfig( HNODE_SLIDE_DIGITIZER_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
     {
         std::cout << "ERROR: Could not save initial configuration." << std::endl;
         return HNSDD_RESULT_FAILURE;
@@ -259,7 +275,7 @@ HNSlideDigitizerDevice::readConfig()
 
     std::cout << "Loading config..." << std::endl;
 
-    if( cfgFile.loadConfig( HNODE_TEST_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
+    if( cfgFile.loadConfig( HNODE_SLIDE_DIGITIZER_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
     {
         std::cout << "ERROR: Could not load saved configuration." << std::endl;
         return HNSDD_RESULT_FAILURE;
@@ -284,7 +300,7 @@ HNSlideDigitizerDevice::updateConfig()
     cfg.debugPrint(2);
     
     std::cout << "Saving config..." << std::endl;
-    if( cfgFile.saveConfig( HNODE_TEST_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
+    if( cfgFile.saveConfig( HNODE_SLIDE_DIGITIZER_DEVTYPE, m_instanceName, cfg ) != HNC_RESULT_SUCCESS )
     {
         std::cout << "ERROR: Could not save configuration." << std::endl;
         return HNSDD_RESULT_FAILURE;
@@ -319,16 +335,22 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
         m_configUpdateTrigger.reset();
         updateConfig();
     }
-    else if( sfd == m_captureQueue.getEventFD() )
+    else if( m_hardwareNotifyTrigger.isMatch( sfd ) )
+    {
+        std::cout << "m_hardwareNotifyTrigger" << std::endl;
+        m_hardwareNotifyTrigger.reset();
+        
+    }
+    else if( sfd == m_userActionQueue.getEventFD() )
     {
         // Verify that we can handle a new action,
         // otherwise just spin.
-        std::cout << "Capture Queue: " << getState() << std::endl;
+        std::cout << "Action Queue: " << getState() << std::endl;
         //if( getState() != HNID_STATE_READY )
         //    return;
 
         // Start the new action
-        startCapture();
+        startAction();
     }
 
 }
@@ -348,7 +370,7 @@ HNSlideDigitizerDevice::hndnConfigChange( HNodeDevice *parent )
 }
 
 void
-HNIrrigationDevice::startAction()
+HNSlideDigitizerDevice::startAction()
 {
     //HNSWDPacketClient packet;
     HNID_ACTBIT_T  actBits = HNID_ACTBIT_CLEAR;
@@ -360,11 +382,11 @@ HNIrrigationDevice::startAction()
 //    }
 
     // Pop the action from the queue
-    m_curAction = ( HNSDAction* ) m_actionQueue.aquireRecord();
+    m_curUserAction = ( HNSDAction* ) m_userActionQueue.aquireRecord();
 
-    std::cout << "Action aquired - type: " << m_curAction->getType()  << "  thread: " << std::this_thread::get_id() << std::endl;
+    std::cout << "Action aquired - type: " << m_curUserAction->getType()  << "  thread: " << std::this_thread::get_id() << std::endl;
 
-    switch( m_curAction->getType() )
+    switch( m_curUserAction->getType() )
     {
         case HNSD_AR_TYPE_START_SINGLE_CAPTURE:
         {
@@ -390,32 +412,25 @@ HNIrrigationDevice::startAction()
 //        updateConfig();
     }
 
-    // Send a request down to the switch daemon
-    if( actBits & HNID_ACTBIT_SENDREQ )
-    {
-//        std::cout << "Sending a switch deamon request..." << "  thread: " << std::this_thread::get_id() << std::endl;
-//        packet.sendAll( m_swdFD );
-    }
-
     // There was an error, complete with error
     if( actBits & HNID_ACTBIT_ERROR )
     {
-        std::cout << "Failing action: " << m_curAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+        std::cout << "Failing action: " << m_curUserAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
 
         // Signal failure
-        m_curAction->complete( false );
-        m_curAction = NULL;
+        m_curUserAction->complete( false );
+        m_curUserAction = NULL;
         return;
     }
 
     // Request has been completed successfully
     if( actBits & HNID_ACTBIT_COMPLETE )
     {
-        std::cout << "Completing action: " << m_curAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+        std::cout << "Completing action: " << m_curUserAction->getType() << "  thread: " << std::this_thread::get_id() << std::endl;
 
         // Done with this request
-        m_curAction->complete( true );
-        m_curAction = NULL;
+        m_curUserAction->complete( true );
+        m_curUserAction = NULL;
     }
     
 }

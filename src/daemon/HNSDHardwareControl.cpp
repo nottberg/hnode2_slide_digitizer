@@ -14,16 +14,11 @@ HNSDHardwareControl::~HNSDHardwareControl()
 }
 
 void
-HNSDHardwareControl::setNotificationFD( uint notificationFD )
+HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 {
-    m_notifyFD = notificationFD;
+    m_notifyTrigger = notifyTrigger;
 }
 
-uint
-HNSDHardwareControl::getNotificationFD()
-{
-    return m_notifyFD;
-}
 
 HNSD_HWSTATE_T 
 HNSDHardwareControl::getState()

@@ -38,6 +38,16 @@ typedef enum HNSlideDigitizerDeviceStateEnum
   HNSD_DEVSTATE_CAROSEL_ADVANCING
 }HNSD_DEVSTATE_T;
 
+typedef enum HNIDStartActionBitsEnum
+{
+    HNID_ACTBIT_CLEAR     = 0x0000,
+    HNID_ACTBIT_COMPLETE  = 0x0001,
+    HNID_ACTBIT_UPDATE    = 0x0002,
+//    HNID_ACTBIT_RECALCSCH = 0x0004,
+    HNID_ACTBIT_ERROR     = 0x0008,
+//    HNID_ACTBIT_SENDREQ   = 0x0010
+} HNID_ACTBIT_T;
+
 class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDEPDispatchInf, public HNDEventNotifyInf, public HNEPLoopCallbacks 
 {
     protected:
@@ -52,6 +62,9 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         virtual void timeoutEvent();
         virtual void fdEvent( int sfd );
         virtual void fdError( int sfd );
+
+        // Current device state
+        HNSD_DEVSTATE_T getState();
 
         // Poco funcions
         void defineOptions( Poco::Util::OptionSet& options );
@@ -77,7 +90,7 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNSD_DEVSTATE_T  m_devState;
 
         HNSDHardwareControl m_hardwareCtrl;
-        int m_hardwareNotifyFD;
+        HNEPTrigger         m_hardwareNotifyTrigger;
 
         HNSDAction     *m_curUserAction;
         HNReqWaitQueue  m_userActionQueue;
@@ -100,6 +113,8 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNSDD_RESULT_T initConfig();
         HNSDD_RESULT_T readConfig();
         HNSDD_RESULT_T updateConfig();
+
+        void startAction();
 
         //void generateNewHealthState();
 };

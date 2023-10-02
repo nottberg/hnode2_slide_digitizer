@@ -8,6 +8,8 @@
 #include <thread>
 #include <sstream>
 
+#include <hnode2/HNEPLoop.h>
+
 #include "CameraManager.h"
 
 typedef enum HNSDHardwareControlResult
@@ -35,16 +37,14 @@ class HNSDHardwareControl
         HNSDHardwareControl();
        ~HNSDHardwareControl();
 
-        void setNotificationFD( uint notificationFD );
+        void init( HNEPTrigger *notifyTrigger );
 
         HNSD_HWSTATE_T getState();
-
-        uint getNotificationFD();
 
         HNSD_HC_RESULT_T startCapture();
 
     private:
-        uint m_notifyFD;
+        HNEPTrigger *m_notifyTrigger;
 
         HNSD_HWSTATE_T  m_state;
 };
