@@ -3,7 +3,7 @@
 
 HNSDHardwareControl::HNSDHardwareControl()
 {
-    m_notifyFD = 0;
+    m_notifyTrigger = NULL;
 
     m_state = HNSD_HWSTATE_NOTSET;
 }
