@@ -34,13 +34,19 @@ HNSDHardwareControl::startCapture()
     if( m_state != HNSD_HWSTATE_IDLE )
         return HNSD_HC_RESULT_BUSY;
 
-    m_opThread = std::thread( HNSDHardwareControl::captureThread, this );
+    m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
 
     return HNSD_HC_RESULT_SUCCESS;
 }
 
+void 
+HNSDHardwareControl::captureThread( HNSDHardwareControl *ctrl )
+{
+    ctrl->runCapture();
+}
+
 void
-HNSDHardwareControl::captureThread()
+HNSDHardwareControl::runCapture()
 {
     CaptureRequest request;
 
