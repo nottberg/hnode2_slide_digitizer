@@ -92,6 +92,19 @@ class CaptureRequest
 
 };
 
+typedef enum CameraEventTypeEnum
+{
+    CR_EVTYPE_REQ_CANCELED,
+    CR_EVTYPE_REQ_FOCUSING,
+    CR_EVTYPE_REQ_COMPLETE
+}CR_EVTYPE_T;
+
+class CameraEventInf
+{
+    public:
+        virtual void requestEvent( CR_EVTYPE_T event ) = 0;
+};
+
 class Camera
 {
     public:
@@ -102,7 +115,7 @@ class Camera
 
         //CM_RESULT_T setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height );
 
-        CM_RESULT_T acquire( CaptureRequest *request );
+        CM_RESULT_T acquire( CaptureRequest *request, CameraEventInf *callback );
 
         CM_RESULT_T configureForCapture();
 
@@ -151,6 +164,9 @@ class Camera
         //CS_STILLMODE_T m_captureMode;
         //uint m_captureWidth;
         //uint m_captureHeight;
+
+        // Event callback interface
+        CameraEventInf *m_eventCB;
 
         // Current Capture Request
         CaptureRequest *m_capReq;

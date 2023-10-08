@@ -88,6 +88,9 @@ Camera::Camera( CameraManager *parent, std::string id )
 {
     m_id = id;
     m_parent = parent;
+
+    m_eventCB = NULL;
+    m_capReq = NULL;
 }
 
 Camera::~Camera()
@@ -150,8 +153,11 @@ Camera::getID()
 }
 
 CM_RESULT_T
-Camera::acquire( CaptureRequest *request )
+Camera::acquire( CaptureRequest *request, CameraEventInf *callback )
 {
+    // Set the callback interface
+    m_eventCB = callback;
+
     // Save away the current request object
     m_capReq = request;
 
@@ -492,19 +498,17 @@ Camera::queueRequest()
 void
 Camera::requestComplete( libcamera::Request *request )
 {
-    std::cout << "requestComplete - start" << std::endl;
-
-	// Aquire the lock.
-	//m_captureStateMutex.lock();
-
     std::cout << "requestComplete - status: " << request->status() << std::endl;
+
+    if( m_eventCB == NULL )
+        return;
 
 	if( request->status() == libcamera::Request::RequestCancelled )
 	{
 		// If the request is cancelled while the camera is still running, it indicates
 		// a hardware timeout. Let the application handle this error.
         std::cerr << "RequestCancelled, hardware timeout" << std::endl;
-		//m_captureStateMutex.unlock();
+        m_eventCB->requestEvent( CR_EVTYPE_REQ_CANCELED );
 		return;
 	}
 
@@ -512,15 +516,10 @@ Camera::requestComplete( libcamera::Request *request )
 	int af_state = *request->metadata().get( libcamera::controls::AfState );
 	std::cout << "requestComplete - afState: " << af_state << std::endl;
 
-	//if( af_state == libcamera::controls::AfStateScanning )
-		//m_captureState = CTC_STATE_FOCUS;
-	//else
-		//m_captureState = CTC_STATE_CAPTURED;
-
-	//std::cout << "requestComplete - capState: " << m_captureState << std::endl;
-
-	//m_captureStateMutex.unlock();
-
+	if( af_state == libcamera::controls::AfStateScanning )
+        m_eventCB->requestEvent( CR_EVTYPE_REQ_FOCUSING );
+	else
+        m_eventCB->requestEvent( CR_EVTYPE_REQ_COMPLETE );
 }
 
 CM_RESULT_T

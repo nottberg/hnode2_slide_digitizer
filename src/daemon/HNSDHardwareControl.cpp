@@ -52,7 +52,7 @@ HNSDHardwareControl::runCapture()
 
     std::cout << "Capture Cam ID: " << m_curCamera->getID() << std::endl;
 
-    m_curCamera->acquire( &request );
+    m_curCamera->acquire( &request, this );
 
 	std::cout << "Capture thread - Acquired camera " << m_curCamera->getID() << std::endl;
 
@@ -162,38 +162,30 @@ HNSDHardwareControl::runCapture()
 	std::cout << "Capture complete" << std::endl;
 }
 
-#if 0
 void
-HNSDHardwareControl::requestComplete( libcamera::Request *request )
+HNSDHardwareControl::requestEvent( CR_EVTYPE_T event )
 {
-    std::cout << "requestComplete - start" << std::endl;
+    std::cout << "HWCtrl::requestEvent - event: " << event << std::endl;
 
 	// Aquire the lock.
 	m_captureStateMutex.lock();
 
-    std::cout << "requestComplete - status: " << request->status() << std::endl;
+    switch( event )
+    {
+        case CR_EVTYPE_REQ_CANCELED:
+        break;
 
-	if( request->status() == libcamera::Request::RequestCancelled )
-	{
-		// If the request is cancelled while the camera is still running, it indicates
-		// a hardware timeout. Let the application handle this error.
-        std::cerr << "RequestCancelled, hardware timeout" << std::endl;
-		m_captureStateMutex.unlock();
-		return;
-	}
+        case CR_EVTYPE_REQ_FOCUSING:
+    		m_captureState = HNSDCT_STATE_FOCUS;
+        break;
 
-	// Check if autofocus is still scanning
-	int af_state = *request->metadata().get( libcamera::controls::AfState );
-	std::cout << "requestComplete - afState: " << af_state << std::endl;
+        case CR_EVTYPE_REQ_COMPLETE:
+    		m_captureState = HNSDCT_STATE_CAPTURED;
+        break;
+    }
 
-	if( af_state == libcamera::controls::AfStateScanning )
-		m_captureState = HNSDCT_STATE_FOCUS;
-	else
-		m_captureState = HNSDCT_STATE_CAPTURED;
-
-	std::cout << "requestComplete - capState: " << m_captureState << std::endl;
+	std::cout << "HWCTRL::requestEvent - capState: " << m_captureState << std::endl;
 
 	m_captureStateMutex.unlock();
-
 }
-#endif
+

@@ -39,7 +39,7 @@ typedef enum HNSDCaptureThreadStateEnum
     HNSDCT_STATE_CAPTURED
 }HNSDCT_STATE_T;
 
-class HNSDHardwareControl 
+class HNSDHardwareControl : public CameraEventInf
 {
     public:
         HNSDHardwareControl();
@@ -50,6 +50,8 @@ class HNSDHardwareControl
         HNSD_HWSTATE_T getState();
 
         HNSD_HC_RESULT_T startCapture();
+
+        virtual void requestEvent( CR_EVTYPE_T event );
 
     private:
         HNEPTrigger *m_notifyTrigger;
