@@ -517,7 +517,7 @@ Camera::requestComplete( libcamera::Request *request )
 	//else
 		//m_captureState = CTC_STATE_CAPTURED;
 
-	std::cout << "requestComplete - capState: " << m_captureState << std::endl;
+	//std::cout << "requestComplete - capState: " << m_captureState << std::endl;
 
 	//m_captureStateMutex.unlock();
 
