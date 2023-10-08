@@ -66,15 +66,55 @@ typedef enum CameraSupportedStillCaptureModeEnum
     CS_STILLMODE_YUYV
 } CS_STILLMODE_T;
 
+class CaptureRequest
+{
+    public:
+        CaptureRequest();
+       ~CaptureRequest();
+
+        void setImageFormat( CS_STILLMODE_T mode, uint width, uint height );
+
+        friend class Camera;
+
+    protected:
+
+        CM_RESULT_T initAfterConfigSet();
+        CM_RESULT_T initAfterRequestSet();
+
+        CS_STILLMODE_T m_mode;
+
+        uint m_width;
+        uint m_height;
+
+        std::shared_ptr< libcamera::CameraConfiguration > m_cfgObj;
+
+        std::shared_ptr< libcamera::Request > m_reqObj;
+
+};
+
 class Camera
 {
     public:
         Camera( CameraManager *parent, std::string id );
        ~Camera();
 
-        CM_RESULT_T setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr );
+        CM_RESULT_T initFromLibrary();
 
-        CM_RESULT_T setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height );
+        //CM_RESULT_T setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height );
+
+        CM_RESULT_T acquire( CaptureRequest &request );
+
+        CM_RESULT_T configureForCapture( CaptureRequest &request );
+
+        CM_RESULT_T start( CaptureRequest &request );
+
+        CM_RESULT_T queueAutofocusRequest( CaptureRequest &request );
+
+        CM_RESULT_T queueRequest( CaptureRequest &request );
+
+        CM_RESULT_T stop( CaptureRequest &request );
+
+        CM_RESULT_T release( CaptureRequest &request );
 
         std::string getID();
 
@@ -82,7 +122,9 @@ class Camera
 
         void printInfo();
 
-    private:
+        friend class CameraManager;
+
+    protected:
 
         // The Camera Manager parent
         CameraManager *m_parent;
@@ -121,21 +163,6 @@ typedef enum CameraCaptureStateEnum
     CCSTATE_CAPTURE_COMPLETE
 } CCSTATE_T;
 
-class CameraCapture : public HNReqWaitAction
-{
-    public:
-        CameraCapture( std::string id );
-       ~CameraCapture();
-
-        CM_RESULT_T startCapture( std::shared_ptr< Camera > camera );
-
-    private:
-
-        // The capture id
-        std::string m_id;
-
-};
-
 class CameraManager
 {
     public:
@@ -159,8 +186,6 @@ class CameraManager
         std::unique_ptr< libcamera::CameraManager > m_camMgr;
 
         std::map< std::string, std::shared_ptr< Camera > > m_camMap;
-
-        std::map< std::string, std::shared_ptr< CameraCapture > > m_captureMap;
 
 };
 

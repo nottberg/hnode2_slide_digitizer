@@ -31,6 +31,14 @@ typedef enum HNSDHardwareStateEnum
     HNSD_HWSTATE_CAROSEL_ADVANCING
 }HNSD_HWSTATE_T;
 
+typedef enum HNSDCaptureThreadStateEnum
+{
+    HNSDCT_STATE_IDLE,
+    HNSDCT_STATE_WAIT_COMPLETE,
+    HNSDCT_STATE_FOCUS,
+    HNSDCT_STATE_CAPTURED
+}HNSDCT_STATE_T;
+
 class HNSDHardwareControl 
 {
     public:
@@ -47,6 +55,17 @@ class HNSDHardwareControl
         HNEPTrigger *m_notifyTrigger;
 
         HNSD_HWSTATE_T  m_state;
+
+        std::thread m_opThread;
+
+        Camera *m_curCamera;
+
+        std::mutex  m_captureStateMutex;
+        HNSDCT_STATE_T m_captureState;
+
+        void captureThread();
+
+        void requestComplete( libcamera::Request *request );
 };
 
 #endif // __HNSD_HARDWARE_CONTROL_H__

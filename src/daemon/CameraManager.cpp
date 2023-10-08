@@ -1,3 +1,5 @@
+#include <sys/mman.h>
+
 #include <iostream>
 #include <sstream>
 
@@ -30,15 +32,57 @@ CameraFormat::~CameraFormat()
 
 }
 
-CameraCapture::CameraCapture( std::string id )
+
+CaptureRequest::CaptureRequest()
 {
-    m_id = id;
+    m_mode   = CS_STILLMODE_DEFAULT;
+    m_width  = 4624;
+    m_height = 3472;
 }
 
-CameraCapture::~CameraCapture()
+CaptureRequest::~CaptureRequest()
 {
 
 }
+
+void
+CaptureRequest::setImageFormat( CS_STILLMODE_T mode, uint width, uint height )
+{
+    m_mode   = mode;
+    m_width  = width;
+    m_height = height;
+}
+
+CM_RESULT_T
+CaptureRequest::initAfterConfigSet()
+{
+    switch( m_mode )
+    {
+        case CS_STILLMODE_YUV420:
+	        m_cfgObj->at(0).pixelFormat = libcamera::formats::YUV420;
+        break;
+
+        case CS_STILLMODE_YUYV:
+        case CS_STILLMODE_DEFAULT:
+        case CS_STILLMODE_NOTSET:
+        default:
+	        m_cfgObj->at(0).pixelFormat = libcamera::formats::YUV420;
+        break;
+    }
+
+	m_cfgObj->at(0).size.width = m_width;
+	
+	m_cfgObj->at(0).size.height = m_height;
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+CaptureRequest::initAfterRequestSet()
+{
+    return CM_RESULT_SUCCESS;
+}
+
 
 Camera::Camera( CameraManager *parent, std::string id )
 {
@@ -60,10 +104,10 @@ Camera::printInfo()
 }
 
 CM_RESULT_T
-Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
+Camera::initFromLibrary()
 {
     // Save away the library pointer
-    m_camPtr = objPtr;
+    //m_camPtr = objPtr;
 
     if( m_camPtr == nullptr )
         return CM_RESULT_SUCCESS;
@@ -89,6 +133,7 @@ Camera::setLibraryObject( std::shared_ptr< libcamera::Camera > objPtr )
     return CM_RESULT_SUCCESS;
 }
 
+#if 0
 CM_RESULT_T
 Camera::setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height )
 {
@@ -98,11 +143,359 @@ Camera::setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height )
 
     return CM_RESULT_SUCCESS;
 }
+#endif
 
 std::string
 Camera::getID()
 {
     return m_id;
+}
+
+CM_RESULT_T
+Camera::acquire( CaptureRequest &request )
+{
+    if( m_camPtr->acquire() )
+    {
+		std::cerr << "failed to acquire camera " + getID() << std::endl;
+        return CM_RESULT_FAILURE;
+    }
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+Camera::configureForCapture( CaptureRequest &request )
+{
+	// Setup stream role
+	std::vector<libcamera::StreamRole> stream_roles = { libcamera::StreamRole::StillCapture };
+	request.m_cfgObj = m_camPtr->generateConfiguration( stream_roles );
+	if( !request.m_cfgObj )
+    {
+		std::cerr << "failed to generate still capture configuration" << std::endl;
+        return CM_RESULT_FAILURE;
+    }
+
+    request.initAfterConfigSet();
+
+    //config.setImageFormat( m_captureMode, m_captureWidth, m_captureHeight );
+
+//	configuration->at(0).colorSpace = libcamera::ColorSpace::Sycc;
+	//configuration->transform = options->transform;
+	
+	// Validate the configuration.
+	libcamera::CameraConfiguration::Status validation = request.m_cfgObj->validate();
+	if( validation == libcamera::CameraConfiguration::Invalid )
+    {
+		std::cerr << "ERROR: validation failed" << std::endl;
+		return CM_RESULT_FAILURE;
+    }
+	else if( validation == libcamera::CameraConfiguration::Adjusted )
+    {
+		std::cout << "camera configuration adjusted" << std::endl;
+    }
+
+    // Apply the configuration
+	if( m_camPtr->configure( request.m_cfgObj.get() ) < 0 )
+    {
+        std::cerr << "failed to configure streams" << std::endl;
+       	return CM_RESULT_FAILURE;
+    }
+
+	std::cout << "Camera streams configured" << std::endl;
+
+	//std::unique_ptr< libcamera::Request > l_request;
+
+	size_t buffer_size = 0;
+	uint8_t *bufPtr = nullptr;
+
+	libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator( m_camPtr );
+	for( libcamera::StreamConfiguration &cfg : *(request.m_cfgObj) )
+	{
+		libcamera::Stream *stream = cfg.stream();
+
+        std::cout << "buffer alloc stream: " << stream->configuration().toString() << std::endl;
+
+		if( allocator->allocate( stream ) < 0 )
+        {
+			std::cerr << "failed to allocate capture buffers" << std::endl;
+            return CM_RESULT_FAILURE;
+        }
+
+		if( allocator->buffers( stream ).size() != 1 )
+		{
+			std::cerr << "More than one allocated buffer" << std::endl;
+            return CM_RESULT_FAILURE;
+		}
+
+        const std::unique_ptr< libcamera::FrameBuffer > &buffer = allocator->buffers( stream ).front();
+		const libcamera::FrameBuffer::Plane &plane = buffer->planes()[0];
+
+		std::cout << "Allocated buffer plane count: " << buffer->planes().size() << std::endl;
+		std::cout << "plane 0 - size: " << buffer->planes()[0].length << "  fd: " << buffer->planes()[0].fd.get() << std::endl;
+		std::cout << "plane 1 - size: " << buffer->planes()[1].length << "  fd: " << buffer->planes()[1].fd.get() << std::endl;
+		std::cout << "plane 2 - size: " << buffer->planes()[2].length << "  fd: " << buffer->planes()[2].fd.get() << std::endl;
+
+		// Add up all of the planes sizes and ensure they are all the same fd.
+		int ogfd = plane.fd.get();
+		for( uint i = 0; i < buffer->planes().size(); i++ )
+		{
+			buffer_size += buffer->planes()[i].length;
+			if( buffer->planes()[i].fd.get() != ogfd )
+			{
+				std::cerr << "Buffer plane fds do not match" << std::endl;
+				return CM_RESULT_FAILURE;
+			}
+		}
+
+		// Memory map the whole buffer for the camera to capture into
+		bufPtr = (uint8_t *) mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
+
+        std::cout << "Buffer Map - ptr: " << bufPtr << "  length: " << buffer_size << std::endl;
+                    
+		//mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(bufPtr), buffer_size ) );
+		//buffer_size = 0;
+		//		}
+		//	}
+		//	frame_buffers[ stream ].push( buffer.get() );
+
+		request.m_reqObj = m_camPtr->createRequest();
+		if( !request.m_reqObj )
+        {
+            std::cerr << "failed to make request" << std::endl;
+            return CM_RESULT_FAILURE;
+        }
+
+        request.initAfterRequestSet();
+
+		if( request.m_reqObj->addBuffer( stream, buffer.get() ) < 0 )
+        {
+		    std::cerr << "failed to add buffer to request" << std::endl;
+            return CM_RESULT_FAILURE;
+        }
+	}
+	
+	std::cout << "Still capture setup complete" << std::endl;
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+Camera::start( CaptureRequest &request )
+{
+	// Setup the camera controls
+    libcamera::ControlList ctrlList( libcamera::controls::controls );
+
+	// Set the region of interest
+	libcamera::Rectangle sensor_area = *( m_camPtr->properties().get( libcamera::properties::ScalerCropMaximum ) );
+	int x = 0.25 * sensor_area.width;
+	int y = 0.25 * sensor_area.height;
+	int w = 0.4 * sensor_area.width;
+	int h = 0.5 * sensor_area.height;
+	libcamera::Rectangle crop( x, y, w, h );
+	crop.translateBy( sensor_area.topLeft() );
+	std::cout << "Using crop " << crop.toString() << std::endl;
+	ctrlList.set( libcamera::controls::ScalerCrop, crop );
+
+#if 0
+	// Build a list of initial controls that we must set in the camera before starting it.
+	// We don't overwrite anything the application may have set before calling us.
+	if (!ctrlList.get(controls::ScalerCrop) && options_->roi_width != 0 && options_->roi_height != 0)
+	{
+		Rectangle sensor_area = *camera_->properties().get(properties::ScalerCropMaximum);
+		int x = options_->roi_x * sensor_area.width;
+		int y = options_->roi_y * sensor_area.height;
+		int w = options_->roi_width * sensor_area.width;
+		int h = options_->roi_height * sensor_area.height;
+		Rectangle crop(x, y, w, h);
+		crop.translateBy(sensor_area.topLeft());
+		LOG(2, "Using crop " << crop.toString());
+		ctrlList.set(controls::ScalerCrop, crop);
+	}
+
+	if (!ctrlList.get(controls::AfWindows) && !ctrlList.get(controls::AfMetering) && options_->afWindow_width != 0 &&
+		options_->afWindow_height != 0)
+	{
+		Rectangle sensor_area = *camera_->properties().get(properties::ScalerCropMaximum);
+		int x = options_->afWindow_x * sensor_area.width;
+		int y = options_->afWindow_y * sensor_area.height;
+		int w = options_->afWindow_width * sensor_area.width;
+		int h = options_->afWindow_height * sensor_area.height;
+		Rectangle afwindows_rectangle[1];
+		afwindows_rectangle[0] = Rectangle(x, y, w, h);
+		afwindows_rectangle[0].translateBy(sensor_area.topLeft());
+		LOG(2, "Using AfWindow " << afwindows_rectangle[0].toString());
+		//activate the AfMeteringWindows
+		ctrlList.set(controls::AfMetering, controls::AfMeteringWindows);
+		//set window
+		ctrlList.set(controls::AfWindows, afwindows_rectangle);
+	}
+
+	// Framerate is a bit weird. If it was set programmatically, we go with that, but
+	// otherwise it applies only to preview/video modes. For stills capture we set it
+	// as long as possible so that we get whatever the exposure profile wants.
+	if (!ctrlList.get(controls::FrameDurationLimits))
+	{
+		if (StillStream())
+			ctrlList.set(controls::FrameDurationLimits,
+						  libcamera::Span<const int64_t, 2>({ INT64_C(100), INT64_C(1000000000) }));
+		else if (!options_->framerate || options_->framerate.value() > 0)
+		{
+			int64_t frame_time = 1000000 / options_->framerate.value_or(DEFAULT_FRAMERATE); // in us
+			ctrlList.set(controls::FrameDurationLimits,
+						  libcamera::Span<const int64_t, 2>({ frame_time, frame_time }));
+		}
+	}
+
+	if (!ctrlList.get(controls::ExposureTime) && options_->shutter)
+		ctrlList.set(controls::ExposureTime, options_->shutter.get<std::chrono::microseconds>());
+	if (!ctrlList.get(controls::AnalogueGain) && options_->gain)
+		ctrlList.set(controls::AnalogueGain, options_->gain);
+	if (!ctrlList.get(controls::AeMeteringMode))
+		ctrlList.set(controls::AeMeteringMode, options_->metering_index);
+	if (!ctrlList.get(controls::AeExposureMode))
+		ctrlList.set(controls::AeExposureMode, options_->exposure_index);
+	if (!ctrlList.get(controls::ExposureValue))
+		ctrlList.set(controls::ExposureValue, options_->ev);
+	if (!ctrlList.get(controls::AwbMode))
+		ctrlList.set(controls::AwbMode, options_->awb_index);
+	if (!ctrlList.get(controls::ColourGains) && options_->awb_gain_r && options_->awb_gain_b)
+		ctrlList.set(controls::ColourGains,
+					  libcamera::Span<const float, 2>({ options_->awb_gain_r, options_->awb_gain_b }));
+	if (!ctrlList.get(controls::Brightness))
+		ctrlList.set(controls::Brightness, options_->brightness);
+	if (!ctrlList.get(controls::Contrast))
+		ctrlList.set(controls::Contrast, options_->contrast);
+	if (!ctrlList.get(controls::Saturation))
+		ctrlList.set(controls::Saturation, options_->saturation);
+	if (!ctrlList.get(controls::Sharpness))
+		ctrlList.set(controls::Sharpness, options_->sharpness);
+
+	// AF Controls, where supported and not already set
+	if (!ctrlList.get(controls::AfMode) && camera_->controls().count(&controls::AfMode) > 0)
+	{
+		int afm = options_->afMode_index;
+		if (afm == -1)
+		{
+			// Choose a default AF mode based on other options
+			if (options_->lens_position || options_->set_default_lens_position || options_->af_on_capture)
+				afm = controls::AfModeManual;
+			else
+				afm = camera_->controls().at(&controls::AfMode).max().get<int>();
+		}
+		ctrlList.set(controls::AfMode, afm);
+	}
+	if (!ctrlList.get(controls::AfRange) && camera_->controls().count(&controls::AfRange) > 0)
+		ctrlList.set(controls::AfRange, options_->afRange_index);
+	if (!ctrlList.get(controls::AfSpeed) && camera_->controls().count(&controls::AfSpeed) > 0)
+		ctrlList.set(controls::AfSpeed, options_->afSpeed_index);
+
+	if (ctrlList.get(controls::AfMode).value_or(controls::AfModeManual) == controls::AfModeAuto)
+	{
+		// When starting a viewfinder or video stream in AF "auto" mode,
+		// trigger a scan now (but don't move the lens when capturing a still).
+		// If an application requires more control over AF triggering, it may
+		// override this behaviour with prior settings of AfMode or AfTrigger.
+		if (!StillStream() && !ctrlList.get(controls::AfTrigger))
+			ctrlList.set(controls::AfTrigger, controls::AfTriggerStart);
+	}
+	else if ((options_->lens_position || options_->set_default_lens_position) &&
+			 camera_->controls().count(&controls::LensPosition) > 0 && !ctrlList.get(controls::LensPosition))
+	{
+		float f;
+		if (options_->lens_position)
+			f = options_->lens_position.value();
+		else
+			f = camera_->controls().at(&controls::LensPosition).def().get<float>();
+		LOG(2, "Setting LensPosition: " << f);
+		ctrlList.set(controls::LensPosition, f);
+	}
+
+	if (options_->flicker_period && !ctrlList.get(controls::AeFlickerMode) &&
+		camera_->controls().find(&controls::AeFlickerMode) != camera_->controls().end() &&
+		camera_->controls().find(&controls::AeFlickerPeriod) != camera_->controls().end())
+	{
+		ctrlList.set(controls::AeFlickerMode, controls::FlickerManual);
+		ctrlList.set(controls::AeFlickerPeriod, options_->flicker_period.get<std::chrono::microseconds>());
+	}
+#endif
+
+	if( m_camPtr->start( &ctrlList ) )
+    {
+		std::cerr << "failed to start camera" << std::endl;
+        return CM_RESULT_FAILURE;
+    }
+
+	ctrlList.clear();
+
+	std::cout << "Camera started!" << std::endl;
+
+	m_camPtr->requestCompleted.connect( this, &CameraThread::requestComplete );
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+Camera::stop( CaptureRequest &request )
+{
+	// Got our capture, shutdown the camera
+	if( m_camPtr->stop() )
+    {
+		std::cout << "failed to stop camera" << std::endl;
+        return CM_RESULT_FAILURE;
+    }
+
+	if( m_camPtr )
+		m_camPtr->requestCompleted.disconnect( this, &CameraThread::requestComplete );
+
+	ctrlList.clear(); // no need for mutex here
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+Camera::queueAutofocusRequest( CaptureRequest &request )
+{
+    // Trigger the autofocus
+    libcamera::ControlList cl;
+    cl.set( libcamera::controls::AfMode, libcamera::controls::AfModeAuto );
+    cl.set( libcamera::controls::AfTrigger, libcamera::controls::AfTriggerStart );
+
+    request.m_reqObj->controls() = std::move( cl );
+
+    std::cout << "Queueing initial request" << std::endl;
+
+    if( m_camPtr->queueRequest( request.m_reqObj.get() ) < 0 )
+    {
+        std::cerr << "Failed to queue request" << std::endl;
+        return CM_RESULT_FAILURE;
+    }
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+Camera::queueRequest( CaptureRequest &request )
+{
+    request.m_reqObj->reuse( libcamera::Request::ReuseBuffers );
+				
+    libcamera::ControlList cl;
+    request.m_reqObj->controls() = std::move( cl );
+
+    if( m_camPtr->queueRequest( request.m_reqObj.get() ) < 0 )
+    {
+        std::cerr << "Failed to queue request" << std::endl;
+        return;
+    }
+
+    return CM_RESULT_SUCCESS;
+}
+
+CM_RESULT_T
+Camera::release( CaptureRequest &request )
+{
+    m_camPtr->release();
+
+    return CM_RESULT_SUCCESS;
 }
 
 std::string
@@ -333,7 +726,9 @@ CameraManager::initCameraList()
 
         std::shared_ptr< Camera > camPtr = std::make_shared< Camera >( this, tmpID );
         
-        camPtr->setLibraryObject( *it );
+        // Save away the library pointer, and initialize the camera object.
+        camPtr->m_camPtr = *it;
+        camPtr->initFromLibrary();
 
         m_camMap.insert( std::pair< std::string, std::shared_ptr< Camera > >( tmpID, camPtr ) );
 
