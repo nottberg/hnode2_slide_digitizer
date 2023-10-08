@@ -22,7 +22,6 @@
 
 #include <hnode2/HNodeDevice.h>
 
-#include "CameraThread.h"
 #include "HNSDAction.h"
 #include "HNSlideDigitizerDevicePrivate.h"
 
@@ -674,10 +673,6 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         
         std::cout << "=== Start Capture Post Data ===" << std::endl;
         std::cout << body << std::endl;
-
-        CameraThread tstCam;
-
-        tstCam.test();
 
         // Object was created return info
         opData->responseSetCreated( "w1" );
