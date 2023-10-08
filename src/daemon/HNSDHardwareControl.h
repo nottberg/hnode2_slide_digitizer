@@ -63,7 +63,7 @@ class HNSDHardwareControl
         std::mutex  m_captureStateMutex;
         HNSDCT_STATE_T m_captureState;
 
-        static void captureThread();
+        static void captureThread( HNSDHardwareControl *ctrl );
         void runCapture();
 
         void requestComplete( libcamera::Request *request );
