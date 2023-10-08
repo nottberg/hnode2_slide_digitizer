@@ -88,8 +88,6 @@ Camera::Camera( CameraManager *parent, std::string id )
 {
     m_id = id;
     m_parent = parent;
-
-    m_captureMode = CS_STILLMODE_DEFAULT;
 }
 
 Camera::~Camera()
@@ -514,9 +512,9 @@ Camera::requestComplete( libcamera::Request *request )
 	int af_state = *request->metadata().get( libcamera::controls::AfState );
 	std::cout << "requestComplete - afState: " << af_state << std::endl;
 
-	if( af_state == libcamera::controls::AfStateScanning )
+	//if( af_state == libcamera::controls::AfStateScanning )
 		//m_captureState = CTC_STATE_FOCUS;
-	else
+	//else
 		//m_captureState = CTC_STATE_CAPTURED;
 
 	std::cout << "requestComplete - capState: " << m_captureState << std::endl;
