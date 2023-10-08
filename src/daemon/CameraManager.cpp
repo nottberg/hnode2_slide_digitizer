@@ -152,8 +152,11 @@ Camera::getID()
 }
 
 CM_RESULT_T
-Camera::acquire( CaptureRequest &request )
+Camera::acquire( CaptureRequest *request )
 {
+    // Save away the current request object
+    m_capReq = request;
+
     if( m_camPtr->acquire() )
     {
 		std::cerr << "failed to acquire camera " + getID() << std::endl;
@@ -164,18 +167,18 @@ Camera::acquire( CaptureRequest &request )
 }
 
 CM_RESULT_T
-Camera::configureForCapture( CaptureRequest &request )
+Camera::configureForCapture()
 {
 	// Setup stream role
 	std::vector<libcamera::StreamRole> stream_roles = { libcamera::StreamRole::StillCapture };
-	request.m_cfgObj = m_camPtr->generateConfiguration( stream_roles );
-	if( !request.m_cfgObj )
+	m_capReq->m_cfgObj = m_camPtr->generateConfiguration( stream_roles );
+	if( !m_capReq->m_cfgObj )
     {
 		std::cerr << "failed to generate still capture configuration" << std::endl;
         return CM_RESULT_FAILURE;
     }
 
-    request.initAfterConfigSet();
+    m_capReq->initAfterConfigSet();
 
     //config.setImageFormat( m_captureMode, m_captureWidth, m_captureHeight );
 
@@ -183,7 +186,7 @@ Camera::configureForCapture( CaptureRequest &request )
 	//configuration->transform = options->transform;
 	
 	// Validate the configuration.
-	libcamera::CameraConfiguration::Status validation = request.m_cfgObj->validate();
+	libcamera::CameraConfiguration::Status validation = m_capReq->m_cfgObj->validate();
 	if( validation == libcamera::CameraConfiguration::Invalid )
     {
 		std::cerr << "ERROR: validation failed" << std::endl;
@@ -195,7 +198,7 @@ Camera::configureForCapture( CaptureRequest &request )
     }
 
     // Apply the configuration
-	if( m_camPtr->configure( request.m_cfgObj.get() ) < 0 )
+	if( m_camPtr->configure( m_capReq->m_cfgObj.get() ) < 0 )
     {
         std::cerr << "failed to configure streams" << std::endl;
        	return CM_RESULT_FAILURE;
@@ -209,7 +212,7 @@ Camera::configureForCapture( CaptureRequest &request )
 	uint8_t *bufPtr = nullptr;
 
 	libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator( m_camPtr );
-	for( libcamera::StreamConfiguration &cfg : *(request.m_cfgObj) )
+	for( libcamera::StreamConfiguration &cfg : *(m_capReq->m_cfgObj) )
 	{
 		libcamera::Stream *stream = cfg.stream();
 
@@ -258,16 +261,16 @@ Camera::configureForCapture( CaptureRequest &request )
 		//	}
 		//	frame_buffers[ stream ].push( buffer.get() );
 
-		request.m_reqObj = m_camPtr->createRequest();
-		if( !request.m_reqObj )
+		m_capReq->m_reqObj = m_camPtr->createRequest();
+		if( !m_capReq->m_reqObj )
         {
             std::cerr << "failed to make request" << std::endl;
             return CM_RESULT_FAILURE;
         }
 
-        request.initAfterRequestSet();
+        m_capReq->initAfterRequestSet();
 
-		if( request.m_reqObj->addBuffer( stream, buffer.get() ) < 0 )
+		if( m_capReq->m_reqObj->addBuffer( stream, buffer.get() ) < 0 )
         {
 		    std::cerr << "failed to add buffer to request" << std::endl;
             return CM_RESULT_FAILURE;
@@ -280,7 +283,7 @@ Camera::configureForCapture( CaptureRequest &request )
 }
 
 CM_RESULT_T
-Camera::start( CaptureRequest &request )
+Camera::start()
 {
 	// Setup the camera controls
     libcamera::ControlList ctrlList( libcamera::controls::controls );
@@ -429,13 +432,13 @@ Camera::start( CaptureRequest &request )
 
 	std::cout << "Camera started!" << std::endl;
 
-	m_camPtr->requestCompleted.connect( this, &CameraThread::requestComplete );
+	m_camPtr->requestCompleted.connect( this, &Camera::requestComplete );
 
     return CM_RESULT_SUCCESS;
 }
 
 CM_RESULT_T
-Camera::stop( CaptureRequest &request )
+Camera::stop()
 {
 	// Got our capture, shutdown the camera
 	if( m_camPtr->stop() )
@@ -445,26 +448,24 @@ Camera::stop( CaptureRequest &request )
     }
 
 	if( m_camPtr )
-		m_camPtr->requestCompleted.disconnect( this, &CameraThread::requestComplete );
-
-	ctrlList.clear(); // no need for mutex here
+		m_camPtr->requestCompleted.disconnect( this, &Camera::requestComplete );
 
     return CM_RESULT_SUCCESS;
 }
 
 CM_RESULT_T
-Camera::queueAutofocusRequest( CaptureRequest &request )
+Camera::queueAutofocusRequest()
 {
     // Trigger the autofocus
     libcamera::ControlList cl;
     cl.set( libcamera::controls::AfMode, libcamera::controls::AfModeAuto );
     cl.set( libcamera::controls::AfTrigger, libcamera::controls::AfTriggerStart );
 
-    request.m_reqObj->controls() = std::move( cl );
+    m_capReq->m_reqObj->controls() = std::move( cl );
 
     std::cout << "Queueing initial request" << std::endl;
 
-    if( m_camPtr->queueRequest( request.m_reqObj.get() ) < 0 )
+    if( m_camPtr->queueRequest( m_capReq->m_reqObj.get() ) < 0 )
     {
         std::cerr << "Failed to queue request" << std::endl;
         return CM_RESULT_FAILURE;
@@ -474,24 +475,58 @@ Camera::queueAutofocusRequest( CaptureRequest &request )
 }
 
 CM_RESULT_T
-Camera::queueRequest( CaptureRequest &request )
+Camera::queueRequest()
 {
-    request.m_reqObj->reuse( libcamera::Request::ReuseBuffers );
+    m_capReq->m_reqObj->reuse( libcamera::Request::ReuseBuffers );
 				
     libcamera::ControlList cl;
-    request.m_reqObj->controls() = std::move( cl );
+    m_capReq->m_reqObj->controls() = std::move( cl );
 
-    if( m_camPtr->queueRequest( request.m_reqObj.get() ) < 0 )
+    if( m_camPtr->queueRequest( m_capReq->m_reqObj.get() ) < 0 )
     {
         std::cerr << "Failed to queue request" << std::endl;
-        return;
+        return CM_RESULT_FAILURE;
     }
 
     return CM_RESULT_SUCCESS;
 }
 
+void
+Camera::requestComplete( libcamera::Request *request )
+{
+    std::cout << "requestComplete - start" << std::endl;
+
+	// Aquire the lock.
+	//m_captureStateMutex.lock();
+
+    std::cout << "requestComplete - status: " << request->status() << std::endl;
+
+	if( request->status() == libcamera::Request::RequestCancelled )
+	{
+		// If the request is cancelled while the camera is still running, it indicates
+		// a hardware timeout. Let the application handle this error.
+        std::cerr << "RequestCancelled, hardware timeout" << std::endl;
+		//m_captureStateMutex.unlock();
+		return;
+	}
+
+	// Check if autofocus is still scanning
+	int af_state = *request->metadata().get( libcamera::controls::AfState );
+	std::cout << "requestComplete - afState: " << af_state << std::endl;
+
+	if( af_state == libcamera::controls::AfStateScanning )
+		//m_captureState = CTC_STATE_FOCUS;
+	else
+		//m_captureState = CTC_STATE_CAPTURED;
+
+	std::cout << "requestComplete - capState: " << m_captureState << std::endl;
+
+	//m_captureStateMutex.unlock();
+
+}
+
 CM_RESULT_T
-Camera::release( CaptureRequest &request )
+Camera::release()
 {
     m_camPtr->release();
 

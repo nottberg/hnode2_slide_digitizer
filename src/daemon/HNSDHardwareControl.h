@@ -66,7 +66,7 @@ class HNSDHardwareControl
         static void captureThread( HNSDHardwareControl *ctrl );
         void runCapture();
 
-        void requestComplete( libcamera::Request *request );
+        //void requestComplete( libcamera::Request *request );
 };
 
 #endif // __HNSD_HARDWARE_CONTROL_H__

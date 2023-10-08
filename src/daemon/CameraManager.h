@@ -102,19 +102,19 @@ class Camera
 
         //CM_RESULT_T setStillCaptureMode( CS_STILLMODE_T mode, uint width, uint height );
 
-        CM_RESULT_T acquire( CaptureRequest &request );
+        CM_RESULT_T acquire( CaptureRequest *request );
 
-        CM_RESULT_T configureForCapture( CaptureRequest &request );
+        CM_RESULT_T configureForCapture();
 
-        CM_RESULT_T start( CaptureRequest &request );
+        CM_RESULT_T start();
 
-        CM_RESULT_T queueAutofocusRequest( CaptureRequest &request );
+        CM_RESULT_T queueAutofocusRequest();
 
-        CM_RESULT_T queueRequest( CaptureRequest &request );
+        CM_RESULT_T queueRequest();
 
-        CM_RESULT_T stop( CaptureRequest &request );
+        CM_RESULT_T stop();
 
-        CM_RESULT_T release( CaptureRequest &request );
+        CM_RESULT_T release();
 
         std::string getID();
 
@@ -125,6 +125,9 @@ class Camera
         friend class CameraManager;
 
     protected:
+
+        // Request complete callback
+        void requestComplete( libcamera::Request *request );
 
         // The Camera Manager parent
         CameraManager *m_parent;
@@ -145,9 +148,12 @@ class Camera
         uint m_arrayHeight;
 
         // Selected mode info
-        CS_STILLMODE_T m_captureMode;
-        uint m_captureWidth;
-        uint m_captureHeight;
+        //CS_STILLMODE_T m_captureMode;
+        //uint m_captureWidth;
+        //uint m_captureHeight;
+
+        // Current Capture Request
+        CaptureRequest *m_capReq;
 
         // Array of possible camera controls
         std::vector< CameraControl > m_controlList;

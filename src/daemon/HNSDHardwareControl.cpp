@@ -52,15 +52,15 @@ HNSDHardwareControl::runCapture()
 
     std::cout << "Capture Cam ID: " << m_curCamera->getID() << std::endl;
 
-    m_curCamera->acquire( request );
+    m_curCamera->acquire( &request );
 
 	std::cout << "Capture thread - Acquired camera " << m_curCamera->getID() << std::endl;
 
-    m_curCamera->configureForCapture( request );
+    m_curCamera->configureForCapture();
 
     std::cout << "Pre Camera Start" << std::endl;
 
-    m_curCamera->start( request );
+    m_curCamera->start();
 
 	// Send requests to wait for auto focus to lock up, etc.
 	bool scanning = true;
@@ -88,7 +88,7 @@ HNSDHardwareControl::runCapture()
 			// So build and submit that.
 			case HNSDCT_STATE_IDLE:
 			{
-                if( m_curCamera->queueAutofocusRequest( request ) != CM_RESULT_SUCCESS )
+                if( m_curCamera->queueAutofocusRequest() != CM_RESULT_SUCCESS )
                 {
                     m_captureStateMutex.unlock();
                     return;
@@ -105,7 +105,7 @@ HNSDHardwareControl::runCapture()
 			{
 			    std::cout << "Queueing polling request" << std::endl;
 
-                if( m_curCamera->queueRequest( request ) != CM_RESULT_SUCCESS )
+                if( m_curCamera->queueRequest() != CM_RESULT_SUCCESS )
                 {
                     m_captureStateMutex.unlock();
                     return;
@@ -137,7 +137,7 @@ HNSDHardwareControl::runCapture()
 
 	}while( scanning == true );
 
-    m_curCamera->stop( request );
+    m_curCamera->stop();
 
 	std::cout << "Camera stopped!" << std::endl;
 
@@ -157,11 +157,12 @@ HNSDHardwareControl::runCapture()
     //jpgSer.serialize();
 
 	// Release the camera
-    m_curCamera->release( request );
+    m_curCamera->release();
 
 	std::cout << "Capture complete" << std::endl;
 }
 
+#if 0
 void
 HNSDHardwareControl::requestComplete( libcamera::Request *request )
 {
@@ -195,3 +196,4 @@ HNSDHardwareControl::requestComplete( libcamera::Request *request )
 	m_captureStateMutex.unlock();
 
 }
+#endif
