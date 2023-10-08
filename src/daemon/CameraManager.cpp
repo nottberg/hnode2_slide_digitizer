@@ -209,11 +209,8 @@ Camera::configureForCapture()
     }
 
 	std::cout << "Camera streams configured" << std::endl;
-
-	//std::unique_ptr< libcamera::Request > l_request;
-
-	size_t buffer_size = 0;
-	uint8_t *bufPtr = nullptr;
+    
+    m_capReq->m_imgBufLength = 0;
 
 	libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator( m_camPtr );
 	for( libcamera::StreamConfiguration &cfg : *(m_capReq->m_cfgObj) )
@@ -246,7 +243,7 @@ Camera::configureForCapture()
 		int ogfd = plane.fd.get();
 		for( uint i = 0; i < buffer->planes().size(); i++ )
 		{
-			buffer_size += buffer->planes()[i].length;
+			m_capReq->m_imgBufLength += buffer->planes()[i].length;
 			if( buffer->planes()[i].fd.get() != ogfd )
 			{
 				std::cerr << "Buffer plane fds do not match" << std::endl;
@@ -255,16 +252,10 @@ Camera::configureForCapture()
 		}
 
 		// Memory map the whole buffer for the camera to capture into
-		bufPtr = (uint8_t *) mmap( NULL, buffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
+		m_capReq->m_imgBufPtr = (uint8_t *) mmap( NULL, m_capReq->m_imgBufLength, PROT_READ | PROT_WRITE, MAP_SHARED, plane.fd.get(), 0 );
 
-        std::cout << "Buffer Map - ptr: " << bufPtr << "  length: " << buffer_size << std::endl;
+        std::cout << "Buffer Map - ptr: " << m_capReq->m_imgBufPtr << "  length: " << m_capReq->m_imgBufLength << std::endl;
                     
-		//mapped_buffers[ buffer.get() ].push_back( libcamera::Span<uint8_t>( static_cast<uint8_t *>(bufPtr), buffer_size ) );
-		//buffer_size = 0;
-		//		}
-		//	}
-		//	frame_buffers[ stream ].push( buffer.get() );
-
 		m_capReq->m_reqObj = m_camPtr->createRequest();
 		if( !m_capReq->m_reqObj )
         {

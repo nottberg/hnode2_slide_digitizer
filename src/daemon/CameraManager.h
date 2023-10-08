@@ -90,6 +90,8 @@ class CaptureRequest
 
         std::shared_ptr< libcamera::Request > m_reqObj;
 
+        uint8_t *m_imgBufPtr;
+        size_t   m_imgBufLength;
 };
 
 typedef enum CameraEventTypeEnum
