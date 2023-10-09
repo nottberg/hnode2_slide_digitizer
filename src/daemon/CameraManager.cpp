@@ -83,6 +83,84 @@ CaptureRequest::initAfterRequestSet()
     return CM_RESULT_SUCCESS;
 }
 
+std::string 
+CaptureRequest::getPlatformName()
+{
+    return "RaspberryPi";
+}
+
+std::string
+CaptureRequest::getCameraModel()
+{
+    return "camModel";
+}
+
+CS_STILLMODE_T
+CaptureRequest::getRawFormat()
+{
+    return m_mode;
+}
+
+size_t
+CaptureRequest::getStreamWidth()
+{
+    return m_width;
+}
+
+size_t
+CaptureRequest::getStreamHeight()
+{
+    return m_height;
+}
+
+size_t
+CaptureRequest::getStreamStride()
+{
+    return 0; // m_cfgObj.get()->stride;
+}
+
+uint8_t *
+CaptureRequest::getImageBufPtr()
+{
+    return m_imgBufPtr;
+}
+
+size_t
+CaptureRequest::getThumbnailWidth()
+{
+    return 200;
+}
+
+size_t
+CaptureRequest::getThumbnailHeight()
+{
+    return 200;
+}
+
+size_t
+CaptureRequest::getOutputWidth()
+{
+    return m_width;
+}
+
+size_t
+CaptureRequest::getOutputHeight()
+{
+    return m_height;
+}
+
+uint
+CaptureRequest::getOutputQuality()
+{
+    return 93;
+}
+
+std::string
+CaptureRequest::getRawFilename()
+{
+    return "/tmp/tmp.jpg"
+}
+
 
 Camera::Camera( CameraManager *parent, std::string id )
 {
@@ -209,7 +287,7 @@ Camera::configureForCapture()
     }
 
 	std::cout << "Camera streams configured" << std::endl;
-    
+
     m_capReq->m_imgBufLength = 0;
 
 	libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator( m_camPtr );

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 
+#include "JPEGSerializer.h"
 #include "HNSDHardwareControl.h"
 
 HNSDHardwareControl::HNSDHardwareControl()
@@ -142,7 +143,9 @@ HNSDHardwareControl::runCapture()
 	std::cout << "Camera stopped!" << std::endl;
 
 	// Turn the capture into a jpeg file.
-    //JPEGSerializer jpgSer;
+    JPEGSerializer jpgSer;
+
+    jpgSer.serialize( &request );
 
 	//libcamera::StreamConfiguration const &cfg = configuration->at(0);
 

@@ -55,14 +55,14 @@ void exif_set_string( ExifEntry *entry, char const *s )
 
 JPEGSerializer::JPEGSerializer()
 {
-    m_filename = "/tmp/tmp.jpg";
+    //m_filename = "/tmp/tmp.jpg";
 
-    m_platformName = "RaspberryPi";
-    m_cameraModel  = "";
+    //m_platformName = "RaspberryPi";
+    //m_cameraModel  = "";
 
-    m_streamWidth  = 0;
-    m_streamHeight = 0;
-    m_streamStride = 0;
+    //m_streamWidth  = 0;
+    //m_streamHeight = 0;
+    //m_streamStride = 0;
 
     m_outputWidth  = 0;
     m_outputHeight = 0;
@@ -70,12 +70,12 @@ JPEGSerializer::JPEGSerializer()
     m_thumbWidth  = 200;
     m_thumbHeight = 200;
 
-    m_rawDataPtr    = nullptr;
-    m_rawDataLength = 0;
-    m_rawFormat     = JPS_RIF_NOTSET;
+    //m_rawDataPtr    = nullptr;
+    //m_rawDataLength = 0;
+    //m_rawFormat     = JPS_RIF_NOTSET;
 
     m_restart = 0;
-    m_quality = 93;
+    //m_quality = 93;
 
     m_thumbBuffer = nullptr;
     m_thumbLength = 0;
@@ -93,7 +93,7 @@ JPEGSerializer::~JPEGSerializer()
 }
 
 void
-JPEGSerializer::YUYV_to_JPEG( uint outputWidth, uint outputHeight, uint quality, uint8_t *&jpeg_buffer, size_t &jpeg_len )
+JPEGSerializer::YUYV_to_JPEG( CaptureRequest *request, uint outputWidth, uint outputHeight, uint8_t *&jpeg_buffer, size_t &jpeg_len )
 {
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -108,7 +108,7 @@ JPEGSerializer::YUYV_to_JPEG( uint outputWidth, uint outputHeight, uint quality,
 	cinfo.restart_interval = m_restart;
 
 	jpeg_set_defaults( &cinfo );
-	jpeg_set_quality( &cinfo, quality, TRUE );
+	jpeg_set_quality( &cinfo, request->getOutputQuality(), TRUE );
 	jpeg_buffer = NULL;
 	jpeg_len = 0;
 	jpeg_mem_dest( &cinfo, &jpeg_buffer, &jpeg_len );
@@ -123,7 +123,7 @@ JPEGSerializer::YUYV_to_JPEG( uint outputWidth, uint outputHeight, uint quality,
 	std::vector<unsigned int> h_offset( output_width3 );
 	for( unsigned int i = 0, k = 0; i < outputWidth; i++ )
 	{
-		unsigned int off = (i * m_streamWidth) / outputWidth * 2;
+		unsigned int off = (i * request->getStreamWidth()) / outputWidth * 2;
 		unsigned int off_align = off & ~3;
 		h_offset[k++] = off;
 		h_offset[k++] = off_align + 1;
@@ -132,12 +132,12 @@ JPEGSerializer::YUYV_to_JPEG( uint outputWidth, uint outputHeight, uint quality,
 
 	while (cinfo.next_scanline < outputHeight)
 	{
-		unsigned int offset = ((cinfo.next_scanline * m_streamHeight) / outputHeight) * m_streamStride;
+		unsigned int offset = ((cinfo.next_scanline * request->getStreamHeight()) / outputHeight) * request->getStreamStride();
 		for( unsigned int k = 0; k < output_width3; k += 3 )
 		{
-			tmp_row[k]     = m_rawDataPtr[offset + h_offset[k]];
-			tmp_row[k + 1] = m_rawDataPtr[offset + h_offset[k + 1]];
-			tmp_row[k + 2] = m_rawDataPtr[offset + h_offset[k + 2]];
+			tmp_row[k]     = request->getImageBufPtr()[offset + h_offset[k]];
+			tmp_row[k + 1] = request->getImageBufPtr()[offset + h_offset[k + 1]];
+			tmp_row[k + 2] = request->getImageBufPtr()[offset + h_offset[k + 2]];
 		}
 		jpeg_write_scanlines( &cinfo, jrow, 1 );
 	}
@@ -147,7 +147,7 @@ JPEGSerializer::YUYV_to_JPEG( uint outputWidth, uint outputHeight, uint quality,
 }
 
 void
-JPEGSerializer::YUV420_to_JPEG( uint outputWidth, uint outputHeight, uint quality, uint8_t *&jpeg_buffer, size_t &jpeg_len )
+JPEGSerializer::YUV420_to_JPEG( CaptureRequest *request, uint outputWidth, uint outputHeight, uint8_t *&jpeg_buffer, size_t &jpeg_len )
 {
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -162,7 +162,7 @@ JPEGSerializer::YUV420_to_JPEG( uint outputWidth, uint outputHeight, uint qualit
 	cinfo.restart_interval = m_restart;
 
 	jpeg_set_defaults( &cinfo );
-	jpeg_set_quality( &cinfo, quality, TRUE );
+	jpeg_set_quality( &cinfo, request->getOutputQuality(), TRUE );
 	jpeg_buffer = NULL;
 	jpeg_len = 0;
 	jpeg_mem_dest( &cinfo, &jpeg_buffer, &jpeg_len );
@@ -173,15 +173,15 @@ JPEGSerializer::YUV420_to_JPEG( uint outputWidth, uint outputHeight, uint qualit
 	JSAMPROW jrow[1];
 	jrow[0] = &tmp_row[0];
 
-	const uint8_t *Y = m_rawDataPtr;
-	const uint8_t *U = Y + m_streamStride * m_streamHeight;
-	const uint8_t *V = U + (m_streamStride / 2) * (m_streamHeight / 2);
+	const uint8_t *Y = request->getImageBufPtr();
+	const uint8_t *U = Y + request->getStreamStride() * request->getStreamHeight();
+	const uint8_t *V = U + (request->getStreamStride() / 2) * (request->getStreamHeight() / 2);
 
 	// Pre-calculate the horizontal offsets to speed up the main loop.
 	std::vector<unsigned int> h_offset( output_width3 );
 	for( unsigned int i = 0, k = 0; i < outputWidth; i++ )
 	{
-		unsigned int off = (i * m_streamWidth) / outputWidth;
+		unsigned int off = (i * request->getStreamWidth()) / outputWidth;
 		h_offset[k++] = off;
 		h_offset[k++] = off / 2;
 		h_offset[k++] = off / 2;
@@ -189,8 +189,8 @@ JPEGSerializer::YUV420_to_JPEG( uint outputWidth, uint outputHeight, uint qualit
 
 	while( cinfo.next_scanline < outputHeight )
 	{
-		unsigned int offset = ( (cinfo.next_scanline *  m_streamHeight) / outputHeight ) * m_streamStride;
-		unsigned int offset_uv = (((cinfo.next_scanline / 2) * m_streamHeight) / outputHeight) * ( m_streamStride / 2);
+		unsigned int offset = ( (cinfo.next_scanline *  request->getStreamHeight()) / outputHeight ) * request->getStreamStride();
+		unsigned int offset_uv = (((cinfo.next_scanline / 2) * request->getStreamHeight()) / outputHeight) * ( request->getStreamStride() / 2);
 		for( unsigned int k = 0; k < output_width3; k += 3 )
 		{
 			tmp_row[k]     = Y[offset + h_offset[k]];
@@ -205,19 +205,18 @@ JPEGSerializer::YUV420_to_JPEG( uint outputWidth, uint outputHeight, uint qualit
 }
 
 void 
-JPEGSerializer::createThumbnail()
+JPEGSerializer::createThumbnail( CaptureRequest *request )
 {
-    switch( m_rawFormat )
+    switch( request->getRawFormat() )
     {
-        case JPS_RIF_YUYV:
-            YUYV_to_JPEG( m_thumbWidth, m_thumbHeight, m_quality, m_thumbBuffer, m_thumbLength );
+        case CS_STILLMODE_YUYV:
+            YUYV_to_JPEG( request, request->getThumbnailWidth(), request->getThumbnailHeight(), m_thumbBuffer, m_thumbLength );
         break;
 
-        case JPS_RIF_YUV420:
-            YUV420_to_JPEG( m_thumbWidth, m_thumbHeight, m_quality, m_thumbBuffer, m_thumbLength );
+        case CS_STILLMODE_YUV420:
+            YUV420_to_JPEG( request, request->getThumbnailWidth(), request->getThumbnailHeight(), m_thumbBuffer, m_thumbLength );
         break;
 
-        case JPS_RIF_NOTSET:
         default:
             std::cerr << "unsupported YUV format in JPEG encode" << std::endl;
         break;
@@ -235,19 +234,18 @@ JPEGSerializer::createThumbnail()
 }
 
 void
-JPEGSerializer::createImage()
+JPEGSerializer::createImage( CaptureRequest *request )
 {
-    switch( m_rawFormat )
+    switch( request->getRawFormat() )
     {
-        case JPS_RIF_YUYV:
-            YUYV_to_JPEG( m_outputWidth, m_outputHeight, m_quality, m_jpegBuffer, m_jpegLength );
+        case CS_STILLMODE_YUYV:
+            YUYV_to_JPEG( request, request->getOutputWidth(), request->getOutputHeight(), m_jpegBuffer, m_jpegLength );
         break;
 
-        case JPS_RIF_YUV420:
-            YUV420_to_JPEG( m_outputWidth, m_outputHeight, m_quality, m_jpegBuffer, m_jpegLength );
+        case CS_STILLMODE_YUV420:
+            YUV420_to_JPEG( request, request->getOutputWidth(), request->getOutputHeight(), m_jpegBuffer, m_jpegLength );
         break;
 
-        case JPS_RIF_NOTSET:
         default:
             std::cerr << "unsupported YUV format in JPEG encode" << std::endl;
         break;
@@ -255,7 +253,7 @@ JPEGSerializer::createImage()
 }
 
 void
-JPEGSerializer::createExifData()
+JPEGSerializer::createExifData( CaptureRequest *request )
 {
 	m_exifBuffer = nullptr;
 	ExifData *exif = nullptr;
@@ -271,10 +269,10 @@ JPEGSerializer::createExifData()
 
 	// First add some fixed EXIF tags.
     ExifEntry *entry = exif_create_tag( exif, EXIF_IFD_EXIF, EXIF_TAG_MAKE );
-	exif_set_string( entry, m_platformName.c_str() );
+	exif_set_string( entry, request->getPlatformName().c_str() );
 
 	entry = exif_create_tag( exif, EXIF_IFD_EXIF, EXIF_TAG_MODEL );
-	exif_set_string( entry, m_cameraModel.c_str() );
+	exif_set_string( entry, request->getCameraModel().c_str() );
 	
     entry = exif_create_tag( exif, EXIF_IFD_EXIF, EXIF_TAG_SOFTWARE );
 	exif_set_string( entry, "hnode2-slide-digitizer" );
@@ -339,13 +337,13 @@ JPEGSerializer::createExifData()
 #endif
     if( m_thumbLength > 0 )
     {
-	    std::cout << "Thumbnail dimensions are " << m_thumbWidth << " x " << m_thumbHeight << std::endl;
+	    std::cout << "Thumbnail dimensions are " << request->getThumbnailWidth() << " x " << request->getThumbnailHeight() << std::endl;
 
 	    entry = exif_create_tag( exif, EXIF_IFD_1, EXIF_TAG_IMAGE_WIDTH );
-	    exif_set_short( entry->data, exif_byte_order, m_thumbWidth );
+	    exif_set_short( entry->data, exif_byte_order, request->getThumbnailWidth() );
 	
         entry = exif_create_tag( exif, EXIF_IFD_1, EXIF_TAG_IMAGE_LENGTH );
-	    exif_set_short( entry->data, exif_byte_order, m_thumbHeight );
+	    exif_set_short( entry->data, exif_byte_order, request->getThumbnailHeight() );
 	
     	entry = exif_create_tag( exif, EXIF_IFD_1, EXIF_TAG_COMPRESSION );
 		exif_set_short( entry->data, exif_byte_order, 6 );
@@ -373,6 +371,7 @@ JPEGSerializer::createExifData()
     exif = nullptr;
 }
 
+#if 0
 void
 JPEGSerializer::setRawSource( JPS_RIF_T format, uint width, uint height, uint stride, uint8_t *dataPtr, size_t dataLength )
 {
@@ -383,13 +382,14 @@ JPEGSerializer::setRawSource( JPS_RIF_T format, uint width, uint height, uint st
     m_rawDataPtr    = dataPtr;
     m_rawDataLength = dataLength;
 }
+#endif
 
 void
-JPEGSerializer::serialize()
+JPEGSerializer::serialize( CaptureRequest *request )
 {
 	FILE *fp = nullptr;
 
-    if( ( m_streamWidth & 1) || ( m_streamHeight & 1 ) )
+    if( ( request->getStreamWidth() & 1) || ( request->getStreamHeight() & 1 ) )
     {
 	    std::cerr << "both width and height must be even" << std::endl;
         return;
@@ -398,29 +398,29 @@ JPEGSerializer::serialize()
     // If output width and height have not been set, then set
     // them to match the input stream width and height.
     if( m_outputHeight == 0 )
-        m_outputHeight = m_streamHeight;
+        m_outputHeight = request->getStreamHeight(); //m_streamHeight;
 
     if( m_outputWidth == 0 )
-        m_outputWidth = m_streamWidth;
+        m_outputWidth = request->getStreamWidth(); //m_streamWidth;
 
 	// Make all the EXIF data, which includes the thumbnail.
 
 	// Create thumbnail
-    createThumbnail();
+    createThumbnail( request );
 
 	// Create Exif data
-    createExifData();
+    createExifData( request );
 
 	// Create image body
-    createImage();
+    createImage( request );
 	
     std::cout << "JPEG size is " << m_jpegLength << std::endl;
 
 	// Write everything out.
-	fp = fopen( m_filename.c_str(), "w" );
+	fp = fopen( request->getRawFilename().c_str(), "w" );
 	if( !fp )
     {
-        std::cerr << "failed to open file " << m_filename << std::endl;
+        std::cerr << "failed to open file " << request->getRawFilename() << std::endl;
         goto cleanup;
     }
 

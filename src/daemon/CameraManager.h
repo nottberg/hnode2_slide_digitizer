@@ -74,6 +74,27 @@ class CaptureRequest
 
         void setImageFormat( CS_STILLMODE_T mode, uint width, uint height );
 
+        std::string getPlatformName();
+        std::string getCameraModel();
+
+        CS_STILLMODE_T getRawFormat();
+
+        size_t getStreamWidth();
+	    size_t getStreamHeight();
+        size_t getStreamStride();
+
+        uint8_t *getImageBufPtr();
+
+        size_t getThumbnailWidth();
+	    size_t getThumbnailHeight();
+
+        size_t getOutputWidth();
+	    size_t getOutputHeight();
+
+        uint getOutputQuality();
+        
+        std::string getRawFilename();
+
         friend class Camera;
 
     protected:
