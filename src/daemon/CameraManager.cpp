@@ -158,7 +158,7 @@ CaptureRequest::getOutputQuality()
 std::string
 CaptureRequest::getRawFilename()
 {
-    return "/tmp/tmp.jpg"
+    return "/tmp/tmp.jpg";
 }
 
 
