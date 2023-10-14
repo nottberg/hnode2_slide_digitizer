@@ -54,14 +54,13 @@ class HNSDHardwareControl : public CameraEventInf
         virtual void requestEvent( CR_EVTYPE_T event );
 
     private:
-        
+        CameraManager m_cameraMgr;
+
         HNEPTrigger *m_notifyTrigger;
 
         HNSD_HWSTATE_T  m_state;
 
         std::thread *m_opThread;
-
-        Camera *m_curCamera;
 
         CaptureRequest *m_activeCapReq;
 

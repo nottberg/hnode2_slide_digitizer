@@ -9,6 +9,13 @@ HNSDHardwareControl::HNSDHardwareControl()
     m_notifyTrigger = NULL;
 
     m_state = HNSD_HWSTATE_NOTSET;
+
+    m_opThread     = NULL;
+	m_activeCapReq = NULL;
+
+    // m_captureStateMutex;
+    m_captureState = HNSDCT_STATE_IDLE;
+
 }
 
 HNSDHardwareControl::~HNSDHardwareControl()
@@ -20,8 +27,38 @@ void
 HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 {
     m_notifyTrigger = notifyTrigger;
+
+	// Start the camera manager
+    m_cameraMgr.start();
+
+    m_cameraMgr.initCameraList();
 }
 
+void
+HNSDHardwareControl::getCameraIDList( std::vector< std::string > &idList )
+{
+	m_cameraMgr.getCameraIDList( idList );
+}
+
+bool
+HNSDHardwareControl::hasCameraWithID( std::string cameraID )
+{
+	std::shared_ptr<Camera> camPtr;
+	
+	camPtr = m_cameraMgr.lookupCameraByID( cameraID );
+
+	return (camPtr == nullptr) ? false : true;
+}
+        
+std::string
+HNSDHardwareControl::getCameraLibraryInfoJSONStr( std::string cameraID )
+{
+	std::shared_ptr<Camera> camPtr;
+	
+	camPtr = m_cameraMgr.lookupCameraByID( cameraID );
+
+	return (camPtr == nullptr) ? "" : camPtr->getLibraryInfoJSONStr();
+}
 
 HNSD_HWSTATE_T 
 HNSDHardwareControl::getState()
@@ -51,17 +88,24 @@ HNSDHardwareControl::captureThread( HNSDHardwareControl *ctrl )
 void
 HNSDHardwareControl::runCapture()
 {
-    std::cout << "Capture Cam ID: " << m_curCamera->getID() << std::endl;
+	std::shared_ptr< Camera > camPtr = NULL;
 
-    m_curCamera->acquire( m_activeCapReq, this );
+	// Temporary, just use first camera
+    std::vector< std::string > idList;
+	m_cameraMgr.getCameraIDList( idList );
+	camPtr = m_cameraMgr.lookupCameraByID( idList[0] );
 
-	std::cout << "Capture thread - Acquired camera " << m_curCamera->getID() << std::endl;
+    std::cout << "Capture Cam ID: " << camPtr->getID() << std::endl;
 
-    m_curCamera->configureForCapture();
+    camPtr->acquire( m_activeCapReq, this );
+
+	std::cout << "Capture thread - Acquired camera " << camPtr->getID() << std::endl;
+
+    camPtr->configureForCapture();
 
     std::cout << "Pre Camera Start" << std::endl;
 
-    m_curCamera->start();
+    camPtr->start();
 
 	// Send requests to wait for auto focus to lock up, etc.
 	bool scanning = true;
@@ -89,7 +133,7 @@ HNSDHardwareControl::runCapture()
 			// So build and submit that.
 			case HNSDCT_STATE_IDLE:
 			{
-                if( m_curCamera->queueAutofocusRequest() != CM_RESULT_SUCCESS )
+                if( camPtr->queueAutofocusRequest() != CM_RESULT_SUCCESS )
                 {
                     m_captureStateMutex.unlock();
                     return;
@@ -106,7 +150,7 @@ HNSDHardwareControl::runCapture()
 			{
 			    std::cout << "Queueing polling request" << std::endl;
 
-                if( m_curCamera->queueRequest() != CM_RESULT_SUCCESS )
+                if( camPtr->queueRequest() != CM_RESULT_SUCCESS )
                 {
                     m_captureStateMutex.unlock();
                     return;
@@ -138,7 +182,7 @@ HNSDHardwareControl::runCapture()
 
 	}while( scanning == true );
 
-    m_curCamera->stop();
+    camPtr->stop();
 
 	std::cout << "Camera stopped!" << std::endl;
 
@@ -160,7 +204,7 @@ HNSDHardwareControl::runCapture()
     //jpgSer.serialize();
 
 	// Release the camera
-    m_curCamera->release();
+    camPtr->release();
 
 	std::cout << "Capture complete" << std::endl;
 }

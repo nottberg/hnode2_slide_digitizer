@@ -145,11 +145,6 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     // Start accepting device notifications
     m_hnodeDev.setNotifySink( this );
 
-    // Start the camera manager
-    m_cameraMgr.start();
-
-    m_cameraMgr.initCameraList();
-
     // Start up the hnode device
     m_hnodeDev.start();
 
@@ -494,7 +489,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Get the list of camera ids
         std::vector< std::string > idList;
 
-        m_cameraMgr.getCameraIDList( idList );
+        m_hardwareCtrl.getCameraIDList( idList );
 
         for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
         {

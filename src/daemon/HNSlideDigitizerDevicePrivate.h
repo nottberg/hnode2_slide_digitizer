@@ -85,8 +85,6 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
 
         HNEPLoop m_testDeviceEvLoop;
 
-        CameraManager m_cameraMgr;
-
         HNSD_DEVSTATE_T  m_devState;
 
         HNSDHardwareControl m_hardwareCtrl;
