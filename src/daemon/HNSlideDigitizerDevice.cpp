@@ -558,9 +558,9 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         std::cout << "=== Get Camera Library Info Request (id: " << cameraID << ") ===" << std::endl;
 
         // Lookup the camera
-        std::shared_ptr< Camera > camPtr = m_cameraMgr.lookupCameraByID( cameraID );
+        //std::shared_ptr< Camera > camPtr = m_cameraMgr.lookupCameraByID( cameraID );
 
-        if( camPtr == nullptr )
+        if( m_hardwareCtrl.hasCameraWithID( cameraID ) == false )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_NOT_FOUND );
             opData->responseSend();
@@ -572,7 +572,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         opData->responseSetContentType( "application/json" );
         
         // Get the response json as a string.
-        std::string jsonStr = camPtr->getLibraryInfoJSONStr();
+        std::string jsonStr = m_hardwareCtrl.getCameraLibraryInfoJSONStr( cameraID );
 
         // Render response content
         std::ostream& ostr = opData->responseSend();

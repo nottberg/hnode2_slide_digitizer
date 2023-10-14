@@ -47,6 +47,12 @@ class HNSDHardwareControl : public CameraEventInf
 
         void init( HNEPTrigger *notifyTrigger );
 
+        void getCameraIDList( std::vector< std::string > &idList );
+
+        bool hasCameraWithID( std::string cameraID );
+        
+        std::string getCameraLibraryInfoJSONStr( std::string cameraID );
+
         HNSD_HWSTATE_T getState();
 
         HNSD_HC_RESULT_T startCapture( CaptureRequest *capReq );
