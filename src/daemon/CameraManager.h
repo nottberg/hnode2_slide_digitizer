@@ -72,7 +72,10 @@ class CaptureRequest
         CaptureRequest();
        ~CaptureRequest();
 
+        void setID( std::string id );
         void setImageFormat( CS_STILLMODE_T mode, uint width, uint height );
+
+        std::string getID();
 
         std::string getPlatformName();
         std::string getCameraModel();
@@ -101,6 +104,8 @@ class CaptureRequest
 
         CM_RESULT_T initAfterConfigSet();
         CM_RESULT_T initAfterRequestSet();
+
+        std::string m_id;
 
         CS_STILLMODE_T m_mode;
 

@@ -49,11 +49,12 @@ class HNSDHardwareControl : public CameraEventInf
 
         HNSD_HWSTATE_T getState();
 
-        HNSD_HC_RESULT_T startCapture();
+        HNSD_HC_RESULT_T startCapture( CaptureRequest *capReq );
 
         virtual void requestEvent( CR_EVTYPE_T event );
 
     private:
+        
         HNEPTrigger *m_notifyTrigger;
 
         HNSD_HWSTATE_T  m_state;
@@ -61,6 +62,8 @@ class HNSDHardwareControl : public CameraEventInf
         std::thread *m_opThread;
 
         Camera *m_curCamera;
+
+        CaptureRequest *m_activeCapReq;
 
         std::mutex  m_captureStateMutex;
         HNSDCT_STATE_T m_captureState;

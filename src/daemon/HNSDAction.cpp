@@ -23,6 +23,12 @@ HNSDAction::setType( HNSD_AR_TYPE_T type )
     m_type = type;
 }
 
+void
+HNSDAction::setNewID( std::string id )
+{
+    m_newID = id;
+}
+
 bool
 HNSDAction::decodeStartCapture( std::istream& bodyStream )
 {
@@ -157,39 +163,11 @@ HNSDAction::hasNewObject( std::string &newID )
 {
     newID.clear();
 
-#if 0
-    switch( m_type )
-    {
-        case HNSD_AR_TYPE_ZONECREATE:
-            newID = getZoneID();
-            return true;
+    if( m_newID.empty() == true )
+        return false;
 
-        case HNSD_AR_TYPE_PLACECREATE:
-            newID = getPlacementID();
-            return true;
-
-        case HNSD_AR_TYPE_MODIFIERCREATE:
-            newID = getModifierID();
-            return true;
-
-        case HNSD_AR_TYPE_SEQUENCECREATE:
-            newID = getSequenceID();
-            return true;
-
-        case HNSD_AR_TYPE_INHIBITCREATE:
-            newID = getInhibitID();
-            return true;
-
-        case HNSD_AR_TYPE_OPERATIONCREATE:
-            newID = getOperationID();
-            return true;
-
-        default:
-        break;
-    }
-#endif
-
-    return false;
+    newID = m_newID;
+    return true;
 }
 
 bool 

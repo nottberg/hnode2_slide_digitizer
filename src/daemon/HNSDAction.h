@@ -46,6 +46,8 @@ class HNSDAction : public HNReqWaitAction
 
         void setType( HNSD_AR_TYPE_T type );
 
+        void setNewID( std::string id );
+        
         bool decodeStartCapture( std::istream& bodyStream );
 
         HNSD_AR_TYPE_T getType();
@@ -56,6 +58,8 @@ class HNSDAction : public HNReqWaitAction
 
     private:
         HNSD_AR_TYPE_T  m_type;
+
+        std::string m_newID;
 
         std::stringstream m_rspStream;
 };

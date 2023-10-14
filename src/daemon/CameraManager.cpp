@@ -46,6 +46,12 @@ CaptureRequest::~CaptureRequest()
 }
 
 void
+CaptureRequest::setID( std::string id )
+{
+    m_id = id;
+}
+
+void
 CaptureRequest::setImageFormat( CS_STILLMODE_T mode, uint width, uint height )
 {
     m_mode   = mode;
@@ -81,6 +87,12 @@ CM_RESULT_T
 CaptureRequest::initAfterRequestSet()
 {
     return CM_RESULT_SUCCESS;
+}
+
+std::string
+CaptureRequest::getID()
+{
+    return m_id;
 }
 
 std::string 

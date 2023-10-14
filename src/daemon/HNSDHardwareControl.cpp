@@ -30,10 +30,12 @@ HNSDHardwareControl::getState()
 }
 
 HNSD_HC_RESULT_T
-HNSDHardwareControl::startCapture()
+HNSDHardwareControl::startCapture( CaptureRequest *capReq )
 {
     if( m_state != HNSD_HWSTATE_IDLE )
         return HNSD_HC_RESULT_BUSY;
+
+	m_activeCapReq = capReq;
 
     m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
 
@@ -49,11 +51,9 @@ HNSDHardwareControl::captureThread( HNSDHardwareControl *ctrl )
 void
 HNSDHardwareControl::runCapture()
 {
-    CaptureRequest request;
-
     std::cout << "Capture Cam ID: " << m_curCamera->getID() << std::endl;
 
-    m_curCamera->acquire( &request, this );
+    m_curCamera->acquire( m_activeCapReq, this );
 
 	std::cout << "Capture thread - Acquired camera " << m_curCamera->getID() << std::endl;
 
@@ -145,7 +145,7 @@ HNSDHardwareControl::runCapture()
 	// Turn the capture into a jpeg file.
     JPEGSerializer jpgSer;
 
-    jpgSer.serialize( &request );
+    jpgSer.serialize( m_activeCapReq );
 
 	//libcamera::StreamConfiguration const &cfg = configuration->at(0);
 

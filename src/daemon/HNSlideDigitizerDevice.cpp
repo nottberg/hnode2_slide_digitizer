@@ -389,13 +389,22 @@ HNSlideDigitizerDevice::startAction()
     {
         case HNSD_AR_TYPE_START_SINGLE_CAPTURE:
         {
-            // Get current device status as JSON
-            //if( buildIrrigationStatusResponse( m_curAction->refRspStream() ) != HNIS_RESULT_SUCCESS )
-            //{
-                //opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            //    actBits = HNID_ACTBIT_ERROR;
-            //    break;
-            //}
+            char idStr[64];
+
+            // Create a new capture record.
+            sprintf( idStr, "cp%u", m_nextCaptureID );
+            m_nextCaptureID += 1;
+            
+            CaptureRequest *newCap = new CaptureRequest();
+            newCap->setID( idStr );
+
+            m_captureMap.insert( std::pair< std::string, CaptureRequest* >( newCap->getID(), newCap ) );
+
+            // Return the newly created capture id
+            m_curUserAction->setNewID( newCap->getID() );
+
+            // Kick off the capture thread
+            m_hardwareCtrl.startCapture( newCap );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
@@ -581,6 +590,14 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
     }
+    // POST "/hnode2/slide-digitizer/captures"
+    else if( "startCapture" == opID )
+    {
+        action.setType( HNSD_AR_TYPE_START_SINGLE_CAPTURE );
+
+        std::istream& bodyStream = opData->requestBody();
+        action.decodeStartCapture( bodyStream );
+    }     
     // GET "/hnode2/slide-digitizer/captures"
     else if( "getCaptureList" == opID )
     {
@@ -618,15 +635,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
             
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
-    }
-    // POST "/hnode2/slide-digitizer/captures"
-    else if( "startCapture" == opID )
-    {
-        action.setType( HNSD_AR_TYPE_START_SINGLE_CAPTURE );
-
-        std::istream& bodyStream = opData->requestBody();
-        action.decodeStartCapture( bodyStream );
-    }    
+    } 
     // GET "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "getCaptureInfo" == opID )
     {
@@ -663,21 +672,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
 
-    }
-    // POST "/hnode2/slide-digitizer/captures"
-    else if( "startCapture" == opID )
-    {
-        std::istream& rs = opData->requestBody();
-        std::string body;
-        Poco::StreamCopier::copyToString( rs, body );
-        
-        std::cout << "=== Start Capture Post Data ===" << std::endl;
-        std::cout << body << std::endl;
-
-        // Object was created return info
-        opData->responseSetCreated( "w1" );
-        opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
-    }       
+    }      
     // DELETE "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "deleteCapture" == opID )
     {
@@ -751,6 +746,63 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         opData->responseSetStatusAndReason( HNR_HTTP_NOT_IMPLEMENTED );
         opData->responseSend();
         return;
+    }
+
+    std::cout << "Start Action - client: " << action.getType() << "  thread: " << std::this_thread::get_id() << std::endl;
+
+    // Submit the action and block for response
+    m_userActionQueue.postAndWait( &action );
+
+    std::cout << "Finish Action - client" << "  thread: " << std::this_thread::get_id() << std::endl;
+
+    // Determine what happened
+    switch( action.getStatus() )
+    {
+        case HNRW_RESULT_SUCCESS:
+        {
+            std::string cType;
+            std::string objID;
+
+            // See if response content should be generated
+            if( action.hasRspContent( cType ) )
+            {
+                // Set response content type
+                opData->responseSetChunkedTransferEncoding( true );
+                opData->responseSetContentType( cType );
+
+                // Render any response content
+                std::ostream& ostr = opData->responseSend();
+            
+                if( action.generateRspContent( ostr ) == true )
+                {
+                    opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+                    opData->responseSend();
+                    return;
+                }
+            }
+
+            // Check if a new object was created.
+            if( action.hasNewObject( objID ) )
+            {
+                // Object was created return info
+                opData->responseSetCreated( objID );
+                opData->responseSetStatusAndReason( HNR_HTTP_CREATED );
+            }
+            else
+            {
+                // Request was successful
+                opData->responseSetStatusAndReason( HNR_HTTP_OK );
+            }
+        }
+        break;
+
+        case HNRW_RESULT_FAILURE:
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+        break;
+
+        case HNRW_RESULT_TIMEOUT:
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+        break;
     }
 
     // Return to caller
