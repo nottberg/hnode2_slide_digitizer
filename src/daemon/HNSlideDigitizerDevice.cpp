@@ -473,6 +473,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        return;
     }
     // GET "/hnode2/slide-digitizer/cameras"
     else if( "getCameraList" == opID )
@@ -506,6 +507,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
             
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        return;
     }
     // GET "/hnode2/slide-digitizer/cameras/{cameraid}"
     else if( "getCameraInfo" == opID )
@@ -542,6 +544,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         }            
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        return;
     }
     // GET "/hnode2/slide-digitizer/cameras/{cameraid}/library-info"
     else if( "getCameraLibraryInfo" == opID )
@@ -584,6 +587,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        return;
     }
     // POST "/hnode2/slide-digitizer/captures"
     else if( "startCapture" == opID )
@@ -630,6 +634,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
             
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        return;
     } 
     // GET "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "getCaptureInfo" == opID )
@@ -666,7 +671,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         }            
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
+        return;
     }      
     // DELETE "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "deleteCapture" == opID )
@@ -686,6 +691,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
         // Request was successful
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
+        return;
     }
     // GET "/hnode2/slide-digitizer/captures/{captureid}/image"
     else if( "getCaptureImage" == opID )
@@ -734,6 +740,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
 
         jpegIF.close();
+        return;
     }    
     else
     {
