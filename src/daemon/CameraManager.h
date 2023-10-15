@@ -111,6 +111,7 @@ class CaptureRequest
 
         uint m_width;
         uint m_height;
+        uint m_stride;
 
         std::shared_ptr< libcamera::CameraConfiguration > m_cfgObj;
 

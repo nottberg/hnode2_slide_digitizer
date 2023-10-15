@@ -38,6 +38,8 @@ CaptureRequest::CaptureRequest()
     m_mode   = CS_STILLMODE_DEFAULT;
     m_width  = 4624;
     m_height = 3472;
+
+    m_stride = 0;
 }
 
 CaptureRequest::~CaptureRequest()
@@ -129,7 +131,7 @@ CaptureRequest::getStreamHeight()
 size_t
 CaptureRequest::getStreamStride()
 {
-    return 0; // m_cfgObj.get()->stride;
+    return m_stride; 
 }
 
 uint8_t *
@@ -353,6 +355,9 @@ Camera::configureForCapture()
             std::cerr << "failed to make request" << std::endl;
             return CM_RESULT_FAILURE;
         }
+
+        std::cout << "Camera Configuration Stride: " << cfg.stride << std::endl;
+        m_capReq->m_stride = cfg.stride;
 
         m_capReq->initAfterRequestSet();
 
