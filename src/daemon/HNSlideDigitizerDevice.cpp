@@ -84,6 +84,7 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_devState = HNSD_DEVSTATE_INIT;
 
     // Initialize the capture queue
+    m_nextCaptureID = 0;
     m_curUserAction = NULL;
     m_userActionQueue.init();
 

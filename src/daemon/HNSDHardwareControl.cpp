@@ -74,6 +74,7 @@ HNSDHardwareControl::startCapture( CaptureRequest *capReq )
 
 	m_activeCapReq = capReq;
 
+	std::cout << "Starting capture thread" << std::endl;
     m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
 
     return HNSD_HC_RESULT_SUCCESS;
@@ -82,6 +83,8 @@ HNSDHardwareControl::startCapture( CaptureRequest *capReq )
 void 
 HNSDHardwareControl::captureThread( HNSDHardwareControl *ctrl )
 {
+	std::cout << "Calling runCapture()" << std::endl;
+	
     ctrl->runCapture();
 }
 
