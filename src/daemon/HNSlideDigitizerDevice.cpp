@@ -394,6 +394,8 @@ HNSlideDigitizerDevice::startAction()
             CaptureRequest *newCap = new CaptureRequest();
             newCap->setID( idStr );
 
+            newCap->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
+
             m_captureMap.insert( std::pair< std::string, CaptureRequest* >( newCap->getID(), newCap ) );
 
             // Return the newly created capture id

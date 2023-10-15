@@ -72,7 +72,8 @@ CaptureRequest::initAfterConfigSet()
         case CS_STILLMODE_DEFAULT:
         case CS_STILLMODE_NOTSET:
         default:
-	        m_cfgObj->at(0).pixelFormat = libcamera::formats::YUV420;
+            m_mode = CS_STILLMODE_YUYV;
+	        m_cfgObj->at(0).pixelFormat = libcamera::formats::YUYV;
         break;
     }
 
