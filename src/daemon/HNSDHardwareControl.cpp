@@ -32,6 +32,8 @@ HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
     m_cameraMgr.start();
 
     m_cameraMgr.initCameraList();
+
+	m_state = HNSDCT_STATE_IDLE;
 }
 
 void
@@ -69,6 +71,8 @@ HNSDHardwareControl::getState()
 HNSD_HC_RESULT_T
 HNSDHardwareControl::startCapture( CaptureRequest *capReq )
 {
+	std::cout << "Starting capture - m_state: " << m_state << std::endl;
+
     if( m_state != HNSD_HWSTATE_IDLE )
         return HNSD_HC_RESULT_BUSY;
 
@@ -77,7 +81,7 @@ HNSDHardwareControl::startCapture( CaptureRequest *capReq )
 	std::cout << "Starting capture thread" << std::endl;
     m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
 	m_opThread->detach();
-	
+
     return HNSD_HC_RESULT_SUCCESS;
 }
 
