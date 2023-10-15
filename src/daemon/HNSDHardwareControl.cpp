@@ -26,6 +26,8 @@ HNSDHardwareControl::~HNSDHardwareControl()
 void
 HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 {
+	m_state = HNSD_HWSTATE_INIT;
+
     m_notifyTrigger = notifyTrigger;
 
 	// Start the camera manager
@@ -33,7 +35,7 @@ HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 
     m_cameraMgr.initCameraList();
 
-	m_state = HNSDCT_STATE_IDLE;
+	m_state = HNSD_HWSTATE_IDLE;
 }
 
 void
@@ -77,6 +79,8 @@ HNSDHardwareControl::startCapture( CaptureRequest *capReq )
         return HNSD_HC_RESULT_BUSY;
 
 	m_activeCapReq = capReq;
+
+	m_state = HNSD_HWSTATE_CAPTURING;
 
 	std::cout << "Starting capture thread" << std::endl;
     m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
