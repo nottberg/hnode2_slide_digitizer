@@ -8,13 +8,11 @@ HNSDHardwareControl::HNSDHardwareControl()
 {
     m_notifyTrigger = NULL;
 
-    m_state = HNSD_HWSTATE_NOTSET;
-
     m_opThread     = NULL;
 	m_activeCapReq = NULL;
 
     // m_captureStateMutex;
-    m_captureState = HNSDCT_STATE_IDLE;
+    m_opState = HNSD_HWSTATE_NOTSET;
 
 }
 
@@ -26,7 +24,7 @@ HNSDHardwareControl::~HNSDHardwareControl()
 void
 HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 {
-	m_state = HNSD_HWSTATE_INIT;
+	m_opState = HNSD_HWSTATE_INIT;
 
     m_notifyTrigger = notifyTrigger;
 
@@ -35,7 +33,7 @@ HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 
     m_cameraMgr.initCameraList();
 
-	m_state = HNSD_HWSTATE_IDLE;
+	updateOperationState( HNSD_HWSTATE_IDLE );
 }
 
 void
@@ -64,23 +62,17 @@ HNSDHardwareControl::getCameraLibraryInfoJSONStr( std::string cameraID )
 	return (camPtr == nullptr) ? "" : camPtr->getLibraryInfoJSONStr();
 }
 
-HNSD_HWSTATE_T 
-HNSDHardwareControl::getState()
-{
-    return m_state;
-}
-
 HNSD_HC_RESULT_T
 HNSDHardwareControl::startCapture( CaptureRequest *capReq )
 {
-	std::cout << "Starting capture - m_state: " << m_state << std::endl;
+	std::cout << "Starting capture - m_state: " << getOperationState() << std::endl;
 
-    if( m_state != HNSD_HWSTATE_IDLE )
+    if( getOperationState() != HNSD_HWSTATE_IDLE )
         return HNSD_HC_RESULT_BUSY;
 
 	m_activeCapReq = capReq;
 
-	m_state = HNSD_HWSTATE_CAPTURING;
+	updateOperationState( HNSD_HWSTATE_OPERATION_START );
 
 	std::cout << "Starting capture thread" << std::endl;
     m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
@@ -98,8 +90,39 @@ HNSDHardwareControl::captureThread( HNSDHardwareControl *ctrl )
 }
 
 void
+HNSDHardwareControl::updateOperationState( HNSD_HWSTATE_T newState )
+{
+	m_opStateMutex.lock();
+
+	if( m_opState != newState )
+	{
+		std::cout << "HNSDHardwareControl::updateOperationState - newState: " << newState << std::endl;
+		m_opState = newState;
+
+		// Notify upper layer of state change
+		if( m_notifyTrigger )
+			m_notifyTrigger->trigger();
+	}
+
+	m_opStateMutex.unlock();
+}
+
+HNSD_HWSTATE_T
+HNSDHardwareControl::getOperationState()
+{
+	HNSD_HWSTATE_T rtnState;
+
+	m_opStateMutex.lock();
+	rtnState = m_opState;
+	m_opStateMutex.unlock();
+
+	return rtnState;
+}
+
+void
 HNSDHardwareControl::runCapture()
 {
+	HNSD_HWSTATE_T curState = HNSD_HWSTATE_NOTSET;
 	std::shared_ptr< Camera > camPtr = NULL;
 
 	// Temporary, just use first camera
@@ -108,6 +131,8 @@ HNSDHardwareControl::runCapture()
 	camPtr = m_cameraMgr.lookupCameraByID( idList[0] );
 
     std::cout << "Capture Cam ID: " << camPtr->getID() << std::endl;
+
+	updateOperationState( HNSD_HWSTATE_CAPTURE_START );
 
     camPtr->acquire( m_activeCapReq, this );
 
@@ -121,75 +146,72 @@ HNSDHardwareControl::runCapture()
 
 	// Send requests to wait for auto focus to lock up, etc.
 	bool scanning = true;
-	bool delay = false;
 	do
 	{
-		if( m_captureStateMutex.try_lock() == false )
-		{
-			std::cout << "Polling capture state - retry" << std::endl;
-			sleep( 1 );
-			continue;
-		}
+		curState = getOperationState();
 
-		switch( m_captureState )
+		switch( curState )
 		{
-			// Check if we are just waiting for the completion to occur
-			case HNSDCT_STATE_WAIT_COMPLETE:
-			{
-				std::cout << "Waiting for request complete" << std::endl;
-				delay = true;
-			}
-			break;
-
 			// Haven't submited the first request yet,
 			// So build and submit that.
-			case HNSDCT_STATE_IDLE:
+			case HNSD_HWSTATE_CAPTURE_START:
 			{
-                if( camPtr->queueAutofocusRequest() != CM_RESULT_SUCCESS )
-                {
-                    m_captureStateMutex.unlock();
-                    return;
-                }
+				updateOperationState( HNSD_HWSTATE_CAPTURE_WAIT_REQ );
 
-				m_captureState = HNSDCT_STATE_WAIT_COMPLETE;
+				m_opStateMutex.lock();
+                CM_RESULT_T result = camPtr->queueAutofocusRequest();
+                m_opStateMutex.unlock();
+
+				if( result != CM_RESULT_SUCCESS )
+				{
+					updateOperationState( HNSD_HWSTATE_CAPTURE_FOCUS_FAILURE );
+                }
 			}
 			break;
 
 			// The camera is still scanning the autofocus
 			// so resubmit the request to continue monitoring
 			// for finished autofocus.
-			case HNSDCT_STATE_FOCUS:
+			case HNSD_HWSTATE_CAPTURE_FOCUS_WAIT:
 			{
 			    std::cout << "Queueing polling request" << std::endl;
 
-                if( camPtr->queueRequest() != CM_RESULT_SUCCESS )
-                {
-                    m_captureStateMutex.unlock();
-                    return;
-                }
+				updateOperationState( HNSD_HWSTATE_CAPTURE_WAIT_REQ );
 
-				m_captureState = HNSDCT_STATE_WAIT_COMPLETE;
+				m_opStateMutex.lock();
+                CM_RESULT_T result = camPtr->queueRequest();
+                m_opStateMutex.unlock();
+
+				if( result != CM_RESULT_SUCCESS )
+				{
+					updateOperationState( HNSD_HWSTATE_CAPTURE_FOCUS_FAILURE );
+                }
 			}
 			break;
 
 			// Autofocus has completed, so exit the 
 			// loop and store this image as the one.
-			case HNSDCT_STATE_CAPTURED:
+			case HNSD_HWSTATE_CAPTURE_RAW_IMAGE_AQUIRED:
 			{
 			    std::cout << "Capture Request completed" << std::endl;
 				scanning = false;
 			}
 			break;
+
+			// Autofocus has failed
+			case HNSD_HWSTATE_CAPTURE_FOCUS_FAILURE:
+			{
+			    std::cout << "Capture Request failed" << std::endl;
+				scanning = false;
+			}
+			break;
 		}
 
-		// Release the mutex, since we are done modifying capture state
-		m_captureStateMutex.unlock();
-
 		// If we are waiting then delay a bit.
-		if( delay == true )
+		if( curState == HNSD_HWSTATE_CAPTURE_WAIT_REQ )
 		{
+			std::cout << "Waiting for request complete" << std::endl;
 			sleep(1);
-			delay = false;
 		}
 
 	}while( scanning == true );
@@ -198,10 +220,15 @@ HNSDHardwareControl::runCapture()
 
 	std::cout << "Camera stopped!" << std::endl;
 
-	// Turn the capture into a jpeg file.
-    JPEGSerializer jpgSer;
+	// If the capture was successful then attempt to
+	// save the raw image.
+	if( curState == HNSD_HWSTATE_CAPTURE_RAW_IMAGE_AQUIRED )
+	{ 
+		// Turn the capture into a jpeg file.
+    	JPEGSerializer jpgSer;
 
-    jpgSer.serialize( m_activeCapReq );
+    	jpgSer.serialize( m_activeCapReq );
+	}
 
 	//libcamera::StreamConfiguration const &cfg = configuration->at(0);
 
@@ -218,6 +245,9 @@ HNSDHardwareControl::runCapture()
 	// Release the camera
     camPtr->release();
 
+	// Temporary
+	updateOperationState( HNSD_HWSTATE_OPERATION_COMPLETE );
+
 	std::cout << "Capture complete" << std::endl;
 }
 
@@ -226,27 +256,28 @@ HNSDHardwareControl::requestEvent( CR_EVTYPE_T event )
 {
     std::cout << "HWCtrl::requestEvent - event: " << event << std::endl;
 
-	// Aquire the lock.
-	m_captureStateMutex.lock();
+	if( getOperationState() != HNSD_HWSTATE_CAPTURE_WAIT_REQ )
+	{
+		std::cout << "ERROR: unexpected requestEvent - ignoring" << std::endl;
+		return;
+	}
 
     switch( event )
     {
         case CR_EVTYPE_REQ_CANCELED:
 		case CR_EVTYPE_REQ_FAILURE:
-			m_captureState = HNSDCT_STATE_FAILURE;
+			updateOperationState( HNSD_HWSTATE_CAPTURE_FOCUS_FAILURE );
         break;
 
         case CR_EVTYPE_REQ_FOCUSING:
-    		m_captureState = HNSDCT_STATE_FOCUS;
+			updateOperationState( HNSD_HWSTATE_CAPTURE_FOCUS_WAIT );
         break;
 
         case CR_EVTYPE_REQ_COMPLETE:
-    		m_captureState = HNSDCT_STATE_CAPTURED;
+			updateOperationState( HNSD_HWSTATE_CAPTURE_RAW_IMAGE_AQUIRED );
         break;
     }
 
-	std::cout << "HWCTRL::requestEvent - capState: " << m_captureState << std::endl;
-
-	m_captureStateMutex.unlock();
+	std::cout << "HWCTRL::requestEvent - capState: " << getOperationState() << std::endl;
 }
 

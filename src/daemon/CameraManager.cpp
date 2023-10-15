@@ -599,7 +599,7 @@ Camera::requestComplete( libcamera::Request *request )
 	switch( af_state )
     {
         case libcamera::controls::AfStateScanning:
-        	std::cout << "requestComplete - autofocus scanning: " << af_state << std::endl;
+        	std::cout << "requestComplete - autofocus scanning" << std::endl;
             m_eventCB->requestEvent( CR_EVTYPE_REQ_FOCUSING );
         break;
 
