@@ -613,6 +613,7 @@ Camera::requestComplete( libcamera::Request *request )
         	std::cout << "requestComplete - autofocus complete - afState: " << af_state << std::endl;
             m_eventCB->requestEvent( CR_EVTYPE_REQ_COMPLETE );
         break;
+    }
 }
 
 CM_RESULT_T
