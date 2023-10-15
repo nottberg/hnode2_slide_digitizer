@@ -124,7 +124,8 @@ typedef enum CameraEventTypeEnum
 {
     CR_EVTYPE_REQ_CANCELED,
     CR_EVTYPE_REQ_FOCUSING,
-    CR_EVTYPE_REQ_COMPLETE
+    CR_EVTYPE_REQ_COMPLETE,
+    CR_EVTYPE_REQ_FAILURE
 }CR_EVTYPE_T;
 
 class CameraEventInf

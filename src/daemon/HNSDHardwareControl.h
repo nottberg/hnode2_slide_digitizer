@@ -36,7 +36,8 @@ typedef enum HNSDCaptureThreadStateEnum
     HNSDCT_STATE_IDLE,
     HNSDCT_STATE_WAIT_COMPLETE,
     HNSDCT_STATE_FOCUS,
-    HNSDCT_STATE_CAPTURED
+    HNSDCT_STATE_CAPTURED,
+    HNSDCT_STATE_FAILURE
 }HNSDCT_STATE_T;
 
 class HNSDHardwareControl : public CameraEventInf

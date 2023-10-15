@@ -232,6 +232,8 @@ HNSDHardwareControl::requestEvent( CR_EVTYPE_T event )
     switch( event )
     {
         case CR_EVTYPE_REQ_CANCELED:
+		case CR_EVTYPE_REQ_FAILURE:
+			m_captureState = HNSDCT_STATE_FAILURE;
         break;
 
         case CR_EVTYPE_REQ_FOCUSING:

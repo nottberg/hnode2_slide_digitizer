@@ -595,12 +595,24 @@ Camera::requestComplete( libcamera::Request *request )
 
 	// Check if autofocus is still scanning
 	int af_state = *request->metadata().get( libcamera::controls::AfState );
-	std::cout << "requestComplete - afState: " << af_state << std::endl;
 
-	if( af_state == libcamera::controls::AfStateScanning )
-        m_eventCB->requestEvent( CR_EVTYPE_REQ_FOCUSING );
-	else
-        m_eventCB->requestEvent( CR_EVTYPE_REQ_COMPLETE );
+	switch( af_state )
+    {
+        case libcamera::controls::AfStateScanning:
+        	std::cout << "requestComplete - autofocus scanning: " << af_state << std::endl;
+            m_eventCB->requestEvent( CR_EVTYPE_REQ_FOCUSING );
+        break;
+
+        case libcamera::controls::AfStateFailed:
+        	std::cout << "requestComplete - autofocus failed" << std::endl;
+            m_eventCB->requestEvent( CR_EVTYPE_REQ_FAILURE );
+        break;
+
+        case libcamera::controls::AfStateFocused:
+        default:
+        	std::cout << "requestComplete - autofocus complete - afState: " << af_state << std::endl;
+            m_eventCB->requestEvent( CR_EVTYPE_REQ_COMPLETE );
+        break;
 }
 
 CM_RESULT_T
