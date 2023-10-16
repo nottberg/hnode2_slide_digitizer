@@ -19,7 +19,7 @@ typedef enum HNSDHardwareControlResult
     HNSD_HC_RESULT_BUSY
 }HNSD_HC_RESULT_T;
 
-typedef enum HNSDHardwareOperationStateEnum
+typedef enum HNSDHardwareStateEnum
 {
     HNSD_HWSTATE_NOTSET = 0,
     HNSD_HWSTATE_INIT = 1,

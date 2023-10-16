@@ -333,6 +333,9 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
     else if( m_hardwareNotifyTrigger.isMatch( sfd ) )
     {
         HNSD_HWSTATE_T opState = m_hardwareCtrl.getOperationState();
+
+        m_hardwareNotifyTrigger.reset();
+
         std::cout << "=== HW notify state change - state: " << opState << std::endl;
         switch( opState )
         {
@@ -366,8 +369,6 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
                 m_hardwareCtrl.finishOperation();
             break;
         }
-
-        m_hardwareNotifyTrigger.reset();
         
     }
     else if( sfd == m_userActionQueue.getEventFD() )
