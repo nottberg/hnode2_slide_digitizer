@@ -4,12 +4,55 @@
 #include "JPEGSerializer.h"
 #include "HNSDHardwareControl.h"
 
+HNSDHardwareOperation::HNSDHardwareOperation( std::string id, HNHW_OPTYPE_T type )
+{
+	m_id = id;
+	m_opType = type;
+	m_opState = HNHW_OPSTATE_PENDING;
+}
+
+HNSDHardwareOperation::~HNSDHardwareOperation()
+{
+
+}
+
+std::string
+HNSDHardwareOperation::getID()
+{
+	return m_id;
+}
+
+HNHW_OPTYPE_T
+HNSDHardwareOperation::getType()
+{
+	return m_opType;
+}
+
+void
+HNSDHardwareOperation::setState( HNHW_OPSTATE_T newState )
+{
+	m_opState = newState;
+}
+
+HNHW_OPSTATE_T
+HNSDHardwareOperation::getState()
+{
+	return m_opState;
+}
+
+CaptureRequest*
+HNSDHardwareOperation::getCaptureRequestPtr()
+{
+	return &m_captureRequest;
+}
+
+
 HNSDHardwareControl::HNSDHardwareControl()
 {
     m_notifyTrigger = NULL;
 
-    m_opThread     = NULL;
-	m_activeCapReq = NULL;
+    m_opThread = NULL;
+	m_activeOp = NULL;
 
     // m_captureStateMutex;
     m_opState = HNSD_HWSTATE_NOTSET;
@@ -63,22 +106,67 @@ HNSDHardwareControl::getCameraLibraryInfoJSONStr( std::string cameraID )
 }
 
 HNSD_HC_RESULT_T
-HNSDHardwareControl::startCapture( CaptureRequest *capReq )
+HNSDHardwareControl::startOperation( HNSDHardwareOperation *op )
 {
-	std::cout << "Starting capture - m_state: " << getOperationState() << std::endl;
 
     if( getOperationState() != HNSD_HWSTATE_IDLE )
+	{
+		std::cout << "Failed to start operation - id: " << op->getID() << "  m_state: " << getOperationState() << std::endl;
         return HNSD_HC_RESULT_BUSY;
+	}
 
-	m_activeCapReq = capReq;
+	m_activeOp = op;
+
+	m_activeOp->setState( HNHW_OPSTATE_ACTIVE );
+
+	std::cout << "Starting operation - id: " << m_activeOp->getID() << "  m_state: " << getOperationState() << std::endl;
 
 	updateOperationState( HNSD_HWSTATE_OPERATION_START );
 
-	std::cout << "Starting capture thread" << std::endl;
-    m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
-	m_opThread->detach();
+	switch( m_activeOp->getType() )
+	{
+		case HNHW_OPTYPE_SINGLE_CAPTURE:
+		{
+			std::cout << "Starting capture thread" << std::endl;
+    		m_opThread = new std::thread( HNSDHardwareControl::captureThread, this );
+			m_opThread->detach();
+		}
+		break;
+	}
 
     return HNSD_HC_RESULT_SUCCESS;
+}
+
+void
+HNSDHardwareControl::cancelOperation()
+{
+	HNSD_HWSTATE_T opState = getOperationState();
+    if( opState == HNSD_HWSTATE_IDLE )
+	{
+		std::cout << "Failed to cancel operation - no active op" << std::endl;
+        return;
+	}
+
+	std::cout << "Canceling operation - id: " << m_activeOp->getID() << "  m_state: " << opState << std::endl;
+}
+
+void
+HNSDHardwareControl::finishOperation()
+{
+	HNSD_HWSTATE_T opState = getOperationState();
+	if( (opState != HNSD_HWSTATE_OPERATION_COMPLETE) && (opState != HNSD_HWSTATE_OPERATION_FAILURE) )
+	{
+		std::cout << "Failed to finish operation - op is not in ending state - state: " << opState << std::endl;
+        return;
+	}
+
+	std::cout << "Finishing operation - id: " << m_activeOp->getID() << "  m_state: " << opState << std::endl;
+
+	m_activeOp->setState( HNHW_OPSTATE_COMPLETE );
+
+	m_activeOp = NULL;
+
+	updateOperationState( HNSD_HWSTATE_IDLE );
 }
 
 void 
@@ -134,7 +222,7 @@ HNSDHardwareControl::runCapture()
 
 	updateOperationState( HNSD_HWSTATE_CAPTURE_START );
 
-    camPtr->acquire( m_activeCapReq, this );
+    camPtr->acquire( m_activeOp->getCaptureRequestPtr(), this );
 
 	std::cout << "Capture thread - Acquired camera " << camPtr->getID() << std::endl;
 
@@ -210,8 +298,8 @@ HNSDHardwareControl::runCapture()
 		// If we are waiting then delay a bit.
 		if( curState == HNSD_HWSTATE_CAPTURE_WAIT_REQ )
 		{
-			std::cout << "Waiting for request complete" << std::endl;
-			sleep(1);
+			std::cout << "===== Waiting =====" << std::endl;
+			sleep(2);
 		}
 
 	}while( scanning == true );
@@ -227,28 +315,20 @@ HNSDHardwareControl::runCapture()
 		// Turn the capture into a jpeg file.
     	JPEGSerializer jpgSer;
 
-    	jpgSer.serialize( m_activeCapReq );
+    	jpgSer.serialize( m_activeOp->getCaptureRequestPtr() );
 	}
-
-	//libcamera::StreamConfiguration const &cfg = configuration->at(0);
-
-    //JPS_RIF_T pFormat = JPS_RIF_NOTSET;
-	//if( cfg.pixelFormat == libcamera::formats::YUYV )
-    //    pFormat = JPS_RIF_YUYV;
-	//else if( cfg.pixelFormat == libcamera::formats::YUV420 )
-    //    pFormat = JPS_RIF_YUV420;
-
-    //jpgSer.setRawSource( pFormat, cfg.size.width, cfg.size.height, cfg.stride, bufPtr, buffer_size );
-
-    //jpgSer.serialize();
 
 	// Release the camera
     camPtr->release();
 
-	// Temporary
-	updateOperationState( HNSD_HWSTATE_OPERATION_COMPLETE );
-
 	std::cout << "Capture complete" << std::endl;
+
+	// Temporary
+	if( curState == HNSD_HWSTATE_CAPTURE_FOCUS_FAILURE )
+		updateOperationState( HNSD_HWSTATE_OPERATION_FAILURE );
+	else
+		updateOperationState( HNSD_HWSTATE_OPERATION_COMPLETE );
+
 }
 
 void

@@ -84,7 +84,7 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_devState = HNSD_DEVSTATE_INIT;
 
     // Initialize the capture queue
-    m_nextCaptureID = 0;
+    m_nextOpID = 0;
     m_curUserAction = NULL;
     m_userActionQueue.init();
 
@@ -332,7 +332,41 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
     }
     else if( m_hardwareNotifyTrigger.isMatch( sfd ) )
     {
-        std::cout << "m_hardwareNotifyTrigger" << std::endl;
+        HNSD_HWSTATE_T opState = m_hardwareCtrl.getOperationState();
+        std::cout << "=== HW notify state change - state: " << opState << std::endl;
+        switch( opState )
+        {
+            case HNSD_HWSTATE_NOTSET:
+            case HNSD_HWSTATE_INIT:
+            break;
+
+            case HNSD_HWSTATE_IDLE:
+                // Check to see if another operation is queued.
+            break;
+
+            case HNSD_HWSTATE_CAPTURE_START:
+            case HNSD_HWSTATE_CAPTURE_FOCUS_WAIT:
+            case HNSD_HWSTATE_CAPTURE_FOCUS_FAILURE:
+            case HNSD_HWSTATE_CAPTURE_POLL_REQUEST:
+            case HNSD_HWSTATE_CAPTURE_WAIT_REQ:
+            case HNSD_HWSTATE_CAPTURE_RAW_IMAGE_AQUIRED:
+            case HNSD_HWSTATE_CAPTURE_POST_PROCESS:
+            case HNSD_HWSTATE_CAPTURE_COMPLETE:
+            case HNSD_HWSTATE_CAROSEL_CAPTURING:
+            case HNSD_HWSTATE_CAROSEL_IMGPROC:
+            case HNSD_HWSTATE_CAROSEL_ADVANCING:
+            case HNSD_HWSTATE_OPERATION_START:
+            break;
+
+            case HNSD_HWSTATE_OPERATION_COMPLETE:
+                m_hardwareCtrl.finishOperation();
+            break;
+
+            case HNSD_HWSTATE_OPERATION_FAILURE:
+                m_hardwareCtrl.finishOperation();
+            break;
+        }
+
         m_hardwareNotifyTrigger.reset();
         
     }
@@ -388,21 +422,22 @@ HNSlideDigitizerDevice::startAction()
             char idStr[64];
 
             // Create a new capture record.
-            sprintf( idStr, "cp%u", m_nextCaptureID );
-            m_nextCaptureID += 1;
+            sprintf( idStr, "hwop%u", m_nextOpID );
+            m_nextOpID += 1;
             
-            CaptureRequest *newCap = new CaptureRequest();
-            newCap->setID( idStr );
+            HNSDHardwareOperation *newOp = new HNSDHardwareOperation( idStr, HNHW_OPTYPE_SINGLE_CAPTURE );
 
-            newCap->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
+            CaptureRequest *crPtr = newOp->getCaptureRequestPtr();
 
-            m_captureMap.insert( std::pair< std::string, CaptureRequest* >( newCap->getID(), newCap ) );
+            crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
+
+            m_opMap.insert( std::pair< std::string, HNSDHardwareOperation* >( newOp->getID(), newOp ) );
 
             // Return the newly created capture id
-            m_curUserAction->setNewID( newCap->getID() );
+            m_curUserAction->setNewID( newOp->getID() );
 
             // Kick off the capture thread
-            m_hardwareCtrl.startCapture( newCap );
+            m_hardwareCtrl.startOperation( newOp );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
