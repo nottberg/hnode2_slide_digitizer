@@ -10,6 +10,7 @@
 
 #include <hnode2/HNEPLoop.h>
 
+#include "GPIOManager.h"
 #include "CameraManager.h"
 
 typedef enum HNSDHardwareControlResult
@@ -46,6 +47,12 @@ typedef enum HNSDHardwareOperationTypeEnum
     HNHW_OPTYPE_SINGLE_CAPTURE
 }HNHW_OPTYPE_T;
 
+typedef enum HNSDHardwareMovementDirectionEnum
+{
+    HNHW_MDIR_FORWARD,
+    HNHW_MDIR_BACKWARD
+}HNHW_MDIR_T;
+
 typedef enum HNSDHardwareOperationStateEnum
 {
     HNHW_OPSTATE_PENDING,
@@ -70,6 +77,10 @@ class HNSDHardwareOperation
 
         CaptureRequest* getCaptureRequestPtr();
 
+        HNHW_MDIR_T getMoveDirection();
+        uint getMoveCyclesRequired();
+        void recordMoveCycleComplete();
+
     private:
         // The object id.
         std::string m_id;
@@ -83,6 +94,16 @@ class HNSDHardwareOperation
         // If the operation involves a capture,
         // this is the config object for that.
         CaptureRequest m_captureRequest;
+
+        // Carousel Movement Tracking
+        // Desired direction of movement
+        HNHW_MDIR_T m_moveDir;
+
+        // Target number of movement steps
+    	uint m_moveStepCnt;
+
+        // Track the number of completed steps
+        uint m_moveCompletedStepCnt;
 };
 
 class HNSDHardwareControl : public CameraEventInf
@@ -122,6 +143,8 @@ class HNSDHardwareControl : public CameraEventInf
 
         std::mutex  m_opStateMutex;
         HNSD_HWSTATE_T m_opState;
+
+        GPIOManager m_gpioMgr;
 
         void updateOperationState( HNSD_HWSTATE_T newState );
 

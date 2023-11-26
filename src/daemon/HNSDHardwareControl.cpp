@@ -9,6 +9,10 @@ HNSDHardwareOperation::HNSDHardwareOperation( std::string id, HNHW_OPTYPE_T type
 	m_id = id;
 	m_opType = type;
 	m_opState = HNHW_OPSTATE_PENDING;
+
+	m_moveDir = HNHW_MDIR_FORWARD;
+	m_moveCompletedStepCnt = 0;
+	m_moveStepCnt = 0;
 }
 
 HNSDHardwareOperation::~HNSDHardwareOperation()
@@ -46,6 +50,26 @@ HNSDHardwareOperation::getCaptureRequestPtr()
 	return &m_captureRequest;
 }
 
+HNHW_MDIR_T 
+HNSDHardwareOperation::getMoveDirection()
+{
+	return m_moveDir;
+}
+
+uint
+HNSDHardwareOperation::getMoveCyclesRequired()
+{
+	if( m_moveCompletedStepCnt > m_moveStepCnt )
+		return 0;
+
+	return (m_moveStepCnt - m_moveCompletedStepCnt);
+}
+
+void
+HNSDHardwareOperation::recordMoveCycleComplete()
+{
+	m_moveCompletedStepCnt += 1;
+}
 
 HNSDHardwareControl::HNSDHardwareControl()
 {
@@ -70,6 +94,9 @@ HNSDHardwareControl::init( HNEPTrigger *notifyTrigger )
 	m_opState = HNSD_HWSTATE_INIT;
 
     m_notifyTrigger = notifyTrigger;
+
+	// Start the gpio manager
+	m_gpioMgr.start();
 
 	// Start the camera manager
     m_cameraMgr.start();
@@ -388,6 +415,40 @@ HNSDHardwareControl::runCarouselMove()
 //			case HNSD_HWSTATE_CAPTURE_START:
 //			{
 //		}
+
+  	while( m_activeOp->getMoveCyclesRequired() )
+  	{
+    	switch( m_activeOp->getMoveDirection() )
+    	{
+			case HNHW_MDIR_FORWARD:
+			{
+			    // Cycle the FW line for 0.5 sec
+      			printf( "Execute forward cycle..." );
+      			m_gpioMgr.setForwardCycle();
+      			usleep( 500000 );
+      			m_gpioMgr.clearForwardCycle();
+      			printf( "done\n" );
+
+				m_activeOp->recordMoveCycleComplete();
+			}
+			break;
+
+			case HNHW_MDIR_BACKWARD:
+			{
+      			printf( "Execute backward cycle..." );
+      			m_gpioMgr.setBackwardCycle();
+      			usleep( 500000 );
+      			m_gpioMgr.clearBackwardCycle();
+      			printf( "done\n" );
+
+				m_activeOp->recordMoveCycleComplete();
+			}
+			break;
+	   	}
+
+		// Wait 1 sec between move operations
+		usleep( 1000000 );
+	}
 
 	std::cout << "Move complete" << std::endl;
 

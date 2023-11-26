@@ -28,6 +28,7 @@ SET( HNSLDIGD_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSDAction.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSDHardwareControl.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/CameraManager.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/GPIOManager.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/JPEGSerializer.cpp
 )
 
@@ -55,6 +56,7 @@ TARGET_LINK_LIBRARIES( hnsldigd PRIVATE ${LibCamera_LIBRARIES} )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibJpeg::common )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE LibExif::common )
 TARGET_LINK_LIBRARIES( hnsldigd PRIVATE -pthread )
+TARGET_LINK_LIBRARIES( hnsldigd PRIVATE gpiod )
 
 INSTALL( TARGETS hnsldigd DESTINATION ${CMAKE_INSTALL_PREFIX}/sbin COMPONENT daemon )
 
