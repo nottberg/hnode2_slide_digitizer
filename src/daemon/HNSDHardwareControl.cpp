@@ -50,6 +50,14 @@ HNSDHardwareOperation::getCaptureRequestPtr()
 	return &m_captureRequest;
 }
 
+void
+HNSDHardwareOperation::setMoveParameters( HNHW_MDIR_T direction, uint stepCnt )
+{
+	m_moveDir = direction;
+	m_moveStepCnt = stepCnt;
+	m_moveCompletedStepCnt = 0;
+}
+
 HNHW_MDIR_T 
 HNSDHardwareOperation::getMoveDirection()
 {

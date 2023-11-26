@@ -77,6 +77,7 @@ class HNSDHardwareOperation
 
         CaptureRequest* getCaptureRequestPtr();
 
+        void setMoveParameters( HNHW_MDIR_T direction, uint stepCnt );
         HNHW_MDIR_T getMoveDirection();
         uint getMoveCyclesRequired();
         void recordMoveCycleComplete();
