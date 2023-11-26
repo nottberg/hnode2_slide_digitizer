@@ -128,6 +128,9 @@ class HNSDHardwareControl : public CameraEventInf
         static void captureThread( HNSDHardwareControl *ctrl );
         void runCapture();
 
+        static void carouselMoveThread( HNSDHardwareControl *ctrl );
+        void runCarouselMove();
+
         //void requestComplete( libcamera::Request *request );
 };
 

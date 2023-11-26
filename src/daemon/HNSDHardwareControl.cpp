@@ -361,3 +361,36 @@ HNSDHardwareControl::requestEvent( CR_EVTYPE_T event )
 	std::cout << "HWCTRL::requestEvent - capState: " << getOperationState() << std::endl;
 }
 
+void 
+HNSDHardwareControl::carouselMoveThread( HNSDHardwareControl *ctrl )
+{
+	std::cout << "Calling runCarouselMove()" << std::endl;
+
+    ctrl->runCarouselMove();
+}
+
+void
+HNSDHardwareControl::runCarouselMove()
+{
+	HNSD_HWSTATE_T curState = HNSD_HWSTATE_NOTSET;
+
+	// updateOperationState( HNSD_HWSTATE_CAPTURE_START );
+
+//	bool scanning = true;
+//	do
+//	{
+//		curState = getOperationState();
+//
+//		switch( curState )
+//		{
+			// Haven't submited the first request yet,
+			// So build and submit that.
+//			case HNSD_HWSTATE_CAPTURE_START:
+//			{
+//		}
+
+	std::cout << "Move complete" << std::endl;
+
+	updateOperationState( HNSD_HWSTATE_OPERATION_COMPLETE );
+
+}
