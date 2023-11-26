@@ -88,6 +88,9 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_curUserAction = NULL;
     m_userActionQueue.init();
 
+    // Initialize the image manager object
+    m_imageMgr.start();
+
     // Initialize the hardware control object
     m_hardwareCtrl.init( &m_hardwareNotifyTrigger );
 

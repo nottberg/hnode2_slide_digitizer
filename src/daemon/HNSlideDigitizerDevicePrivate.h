@@ -12,6 +12,7 @@
 #include <hnode2/HNEPLoop.h>
 #include <hnode2/HNReqWaitQueue.h>
 
+#include "HNSDImageManager.h"
 #include "CameraManager.h"
 #include "HNSDAction.h"
 #include "HNSDHardwareControl.h"
@@ -86,6 +87,8 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNEPLoop m_testDeviceEvLoop;
 
         HNSD_DEVSTATE_T  m_devState;
+
+        HNSDImageManager m_imageMgr;
 
         HNSDHardwareControl m_hardwareCtrl;
         HNEPTrigger         m_hardwareNotifyTrigger;
