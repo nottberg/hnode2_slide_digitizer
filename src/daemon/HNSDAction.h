@@ -15,7 +15,10 @@
 typedef enum HNSDActionRequestType 
 {
     HNSD_AR_TYPE_NOTSET                = 0,
-    HNSD_AR_TYPE_START_SINGLE_CAPTURE  = 1  
+    HNSD_AR_TYPE_START_SINGLE_CAPTURE  = 1,
+    HNSD_AR_TYPE_GET_CAPTURE_LIST      = 2,
+    HNSD_AR_TYPE_GET_CAPTURE_INFO      = 3,
+    HNSD_AR_TYPE_DELETE_CAPTURE        = 4
 }HNSD_AR_TYPE_T;
 
 
@@ -50,16 +53,25 @@ class HNSDAction : public HNReqWaitAction
         
         bool decodeStartCapture( std::istream& bodyStream );
 
+        void setRequestCaptureID( std::string id );
+        std::string getRequestCaptureID();
+
         HNSD_AR_TYPE_T getType();
 
         bool hasNewObject( std::string &newID );
         bool hasRspContent( std::string &contentType );
         bool generateRspContent( std::ostream &ostr );
 
+        void setResponseJSON( std::string jsonStr );
+
     private:
         HNSD_AR_TYPE_T  m_type;
 
         std::string m_newID;
+
+        std::string m_reqCaptureID;
+
+        std::string m_rspStr;
 
         std::stringstream m_rspStream;
 };

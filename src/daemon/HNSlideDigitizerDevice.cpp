@@ -423,6 +423,8 @@ HNSlideDigitizerDevice::startAction()
     {
         case HNSD_AR_TYPE_START_SINGLE_CAPTURE:
         {
+            m_imageMgr.createCaptures( 1, true );
+#if 0            
             char idStr[64];
 
             // Create a new capture record.
@@ -442,11 +444,51 @@ HNSlideDigitizerDevice::startAction()
 
             // Kick off the capture thread
             m_hardwareCtrl.startOperation( newOp );
+#endif
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNSD_AR_TYPE_GET_CAPTURE_LIST:
+        {
+            // Get the capture list json string
+            // from the image manager and 
+            // store it in the current action
+            // so it can be returned to the requestor
+            m_curUserAction->setResponseJSON( m_imageMgr.getCaptureListJSON() );
 
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
         }
         break;
+
+        case HNSD_AR_TYPE_GET_CAPTURE_INFO:
+        {
+            // Check if the provided capture id is valid,
+            // return error if not.
+
+            // Get the capture list json string
+            // from the image manager and 
+            // store it in the current action
+            // so it can be returned to the requestor
+            m_curUserAction->setResponseJSON( m_imageMgr.getCaptureJSON( m_curUserAction->getRequestCaptureID() ) );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNSD_AR_TYPE_DELETE_CAPTURE:
+        {
+            // Tell the image manager to clean-up 
+            // capture and associated data.
+            m_imageMgr.deleteCapture( m_curUserAction->getRequestCaptureID() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;        
     }
 
     // The configuration was changed so commit
@@ -643,41 +685,8 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
     else if( "getCaptureList" == opID )
     {
         std::cout << "=== Get Capture List Request ===" << std::endl;
-
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding( true );
-        opData->responseSetContentType( "application/json" );
-
-        // Create a json root object
-        pjs::Array jsRoot;
-
-        pjs::Object w1Obj;
-        w1Obj.set( "id", "w1" );
-        w1Obj.set( "color", "red" );
-        jsRoot.add( w1Obj );
-
-        pjs::Object w2Obj;
-        w2Obj.set( "id", "w2" );
-        w2Obj.set( "color", "green" );
-        jsRoot.add( w2Obj );
-
-        pjs::Object w3Obj;
-        w3Obj.set( "id", "w3" );
-        w3Obj.set( "color", "blue" );
-        jsRoot.add( w3Obj );
-          
-        // Render response content
-        std::ostream& ostr = opData->responseSend();
-        try{ 
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
-        } catch( ... ) {
-            std::cout << "ERROR: Exception while serializing comment" << std::endl;
-        }
-            
-        // Request was successful
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-        return;
-    } 
+        action.setType( HNSD_AR_TYPE_GET_CAPTURE_LIST );
+    }
     // GET "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "getCaptureInfo" == opID )
     {
@@ -691,29 +700,8 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         }
 
         std::cout << "=== Get Capture Info Request (id: " << captureID << ") ===" << std::endl;
-
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding( true );
-        opData->responseSetContentType( "application/json" );
-        
-        // Create a json root object
-        pjs::Array jsRoot;
-
-        pjs::Object w1Obj;
-        w1Obj.set( "id", captureID );
-        w1Obj.set( "color", "black" );
-        jsRoot.add( w1Obj );
-          
-        // Render response content
-        std::ostream& ostr = opData->responseSend();
-        try{ 
-            pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
-        } catch( ... ) {
-            std::cout << "ERROR: Exception while serializing comment" << std::endl;
-        }            
-        // Request was successful
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-        return;
+        action.setType( HNSD_AR_TYPE_GET_CAPTURE_INFO );
+        action.setRequestCaptureID( captureID );
     }      
     // DELETE "/hnode2/slide-digitizer/captures/{captureid}"
     else if( "deleteCapture" == opID )
@@ -731,9 +719,8 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
         std::cout << "=== Delete Capture Request (id: " << captureID << ") ===" << std::endl;
 
-        // Request was successful
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-        return;
+        action.setType( HNSD_AR_TYPE_DELETE_CAPTURE );
+        action.setRequestCaptureID( captureID );
     }
     // GET "/hnode2/slide-digitizer/captures/{captureid}/image"
     else if( "getCaptureImage" == opID )

@@ -29,6 +29,18 @@ HNSDAction::setNewID( std::string id )
     m_newID = id;
 }
 
+void
+HNSDAction::setRequestCaptureID( std::string id )
+{
+    m_reqCaptureID = id;
+}
+
+std::string
+HNSDAction::getRequestCaptureID()
+{
+    return m_reqCaptureID;
+}
+
 bool
 HNSDAction::decodeStartCapture( std::istream& bodyStream )
 {
@@ -118,6 +130,12 @@ HNSDAction::decodeStartCapture( std::istream& bodyStream )
 
 }
 
+void
+HNSDAction::setResponseJSON( std::string jsonStr )
+{
+    m_rspStr = jsonStr;
+}
+
 HNSD_AR_TYPE_T
 HNSDAction::getType()
 {
@@ -129,31 +147,16 @@ HNSDAction::hasRspContent( std::string &contentType )
 {
     contentType.clear();
 
-#if 0
     switch( m_type )
     {
-        case HNSD_AR_TYPE_SWLIST:  
-        case HNSD_AR_TYPE_ZONELIST:
-        case HNSD_AR_TYPE_ZONEINFO:
-        case HNSD_AR_TYPE_SCHINFO: 
-        case HNSD_AR_TYPE_PLACELIST:
-        case HNSD_AR_TYPE_PLACEINFO:
-        case HNSD_AR_TYPE_IRRSTATUS:
-        case HNSD_AR_TYPE_MODIFIERSLIST:
-        case HNSD_AR_TYPE_MODIFIERINFO:
-        case HNSD_AR_TYPE_SEQUENCESLIST:
-        case HNSD_AR_TYPE_SEQUENCEINFO:
-        case HNSD_AR_TYPE_INHIBITSLIST:
-        case HNSD_AR_TYPE_INHIBITINFO:
-        case HNSD_AR_TYPE_OPERATIONSLIST:
-        case HNSD_AR_TYPE_OPERATIONINFO:
+        case HNSD_AR_TYPE_GET_CAPTURE_LIST:  
+        case HNSD_AR_TYPE_GET_CAPTURE_INFO:
             contentType = "application/json";
             return true;
 
         default:
         break;
     }
-#endif
 
     return false;
 }
@@ -173,28 +176,16 @@ HNSDAction::hasNewObject( std::string &newID )
 bool 
 HNSDAction::generateRspContent( std::ostream &ostr )
 {
-    #if 0
     switch( m_type )
     {
-        case HNSD_AR_TYPE_SWLIST:
+        case HNSD_AR_TYPE_GET_CAPTURE_LIST:
+        case HNSD_AR_TYPE_GET_CAPTURE_INFO:
         {
-            // Create a json root object
-            pjs::Array jsRoot;
-
-            for( std::vector< HNSWDSwitchInfo >::iterator sit = refSwitchList().begin(); sit != refSwitchList().end(); sit++ )
-            { 
-                pjs::Object swObj;
-
-                swObj.set( "swid", sit->getID() );
-                swObj.set( "description", sit->getDesc() );
- 
-                jsRoot.add( swObj );
-            }
-
-            try { pjs::Stringifier::stringify( jsRoot, ostr, 1 ); } catch( ... ) { return true; }
+            ostr << m_rspStr;
         }
         break;
 
+#if 0
         case HNSD_AR_TYPE_ZONELIST:
         {
             // Create a json root object
@@ -546,8 +537,8 @@ HNSDAction::generateRspContent( std::ostream &ostr )
         case HNSD_AR_TYPE_IRRSTATUS:
             Poco::StreamCopier::copyStream( refRspStream(), ostr );
         break;
-    }
 #endif
+    }
 
     // Success
     return false;
