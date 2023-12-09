@@ -20,10 +20,54 @@ typedef enum HNSDCaptureExecutionStateEnum
     HNSDCAP_EXEC_STATE_NOTSET,
     HNSDCAP_EXEC_STATE_PENDING,
     HNSDCAP_EXEC_STATE_CAPTURE,
+    HNSDCAP_EXEC_STATE_CAPTURE_WAIT,
     HNSDCAP_EXEC_STATE_MOVE,
+    HNSDCAP_EXEC_STATE_MOVE_WAIT,
     HNSDCAP_EXEC_STATE_IMAGE_PROCESS,
+    HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT,
     HNSDCAP_EXEC_STATE_COMPLETE
 }HNSDCAP_EXEC_STATE_T;
+
+typedef enum HNSDCaptureActionEnum
+{
+    HNSDCAP_ACTION_WAIT,
+    HNSDCAP_ACTION_START_CAPTURE,
+    HNSDCAP_ACTION_START_ADVANCE,
+    HNSDCAP_ACTION_COMPLETE
+}HNSDCAP_ACTION_T;
+
+typedef enum HNSDCaptureFileType
+{
+    HNSDCAP_FT_NOTSET,
+    HNSDCAP_FT_JPEG
+}HNSDCAP_FT_T;
+
+class HNSDCaptureFile
+{
+    public:
+        HNSDCaptureFile();
+       ~HNSDCaptureFile();
+
+        void setType( HNSDCAP_FT_T type );
+        void setPath( std::string path );
+        void setIndex( uint index );
+        void setPurpose( std::string purpose );
+        void setTimestampStr( std::string tsStr );
+
+        std::string getPathAndFile();
+
+    private:
+        HNSDCAP_FT_T m_type;
+
+        std::string m_path;
+
+        uint m_indexNum;
+
+        std::string m_purpose;
+
+        std::string m_timestampStr;
+
+};
 
 class HNSDCaptureInfoInterface
 {
@@ -45,7 +89,15 @@ class HNSDCaptureRecord
         std::string getID();
         uint getOrderIndex();
 
-        std::string registerNextStepFilename();
+        std::string registerNextFilename( std::string purpose );
+        
+        HNSDCAP_ACTION_T checkNextStep();
+
+        void makeActive();
+
+        void startedAction();
+
+        void completedAction();
 
     private:
         HNSDCaptureInfoInterface *m_infoIntf;
@@ -54,7 +106,9 @@ class HNSDCaptureRecord
 
         uint m_orderIndex;
 
-        std::vector< std::string > m_filenameList;
+        uint m_nextFileIndex;
+
+        std::vector< HNSDCaptureFile > m_fileList;
 
         HNSDCAP_EXEC_STATE_T m_executionState;
 };
@@ -77,6 +131,8 @@ class HNSDImageManager : public HNSDCaptureInfoInterface
         std::string getCaptureListJSON();
 
         std::string getCaptureJSON( std::string capID );
+
+        HNSDCaptureRecord *getNextPendingCapture();
 
     private:
 

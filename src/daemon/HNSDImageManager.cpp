@@ -12,6 +12,61 @@
 
 namespace pjs = Poco::JSON;
 
+HNSDCaptureFile::HNSDCaptureFile()
+{
+    m_type     = HNSDCAP_FT_NOTSET;
+    m_indexNum = 0;
+}
+
+HNSDCaptureFile::~HNSDCaptureFile()
+{
+
+}
+
+void
+HNSDCaptureFile::setType( HNSDCAP_FT_T type )
+{
+    m_type = type;
+}
+
+void
+HNSDCaptureFile::setPath( std::string path )
+{
+    m_path = path;
+}
+
+void
+HNSDCaptureFile::setIndex( uint index )
+{
+    m_indexNum = index;
+}
+
+void
+HNSDCaptureFile::setPurpose( std::string purpose )
+{
+    m_purpose = purpose;
+}
+
+void
+HNSDCaptureFile::setTimestampStr( std::string tsStr )
+{
+    m_timestampStr = tsStr;
+}
+
+std::string 
+HNSDCaptureFile::getPathAndFile()
+{
+    char tmpFN[256];
+    std::string fullPath;
+
+    sprintf( tmpFN, "hnsd_%s_%u_%s.jpg", m_timestampStr.c_str(), m_indexNum, m_purpose.c_str() );
+    
+    fullPath = m_path + "/" + tmpFN;
+
+    return fullPath;
+}
+
+
 HNSDCaptureRecord::HNSDCaptureRecord( HNSDCaptureInfoInterface *infoIntf )
 {
     m_infoIntf = infoIntf;
@@ -60,9 +115,102 @@ HNSDCaptureRecord::getOrderIndex()
 }
 
 std::string
-HNSDCaptureRecord::registerNextStepFilename()
+HNSDCaptureRecord::registerNextFilename( std::string purpose )
 {
-    return "";
+    HNSDCaptureFile newFile;
+
+    newFile.setPath("/tmp");
+    newFile.setTimestampStr("");
+    newFile.setType( HNSDCAP_FT_JPEG );
+    newFile.setPurpose( purpose );
+    newFile.setIndex( m_nextFileIndex );
+    m_nextFileIndex += 1;
+
+    m_fileList.push_back( newFile );
+
+    return newFile.getPathAndFile();
+}
+
+HNSDCAP_ACTION_T
+HNSDCaptureRecord::checkNextStep()
+{
+    switch( m_executionState )
+    {
+        case HNSDCAP_EXEC_STATE_PENDING:
+        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
+        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
+            return HNSDCAP_ACTION_WAIT;
+
+        case HNSDCAP_EXEC_STATE_CAPTURE:
+            return HNSDCAP_ACTION_START_CAPTURE;
+
+        case HNSDCAP_EXEC_STATE_MOVE:
+            return HNSDCAP_ACTION_START_ADVANCE;
+
+//        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
+
+        case HNSDCAP_EXEC_STATE_NOTSET:
+        case HNSDCAP_EXEC_STATE_COMPLETE:
+            break;
+    }
+
+    return HNSDCAP_ACTION_COMPLETE;
+}
+
+void
+HNSDCaptureRecord::makeActive()
+{
+    if( m_executionState == HNSDCAP_EXEC_STATE_PENDING )
+        m_executionState = HNSDCAP_EXEC_STATE_CAPTURE;
+}
+
+void
+HNSDCaptureRecord::startedAction()
+{
+    switch( m_executionState )
+    {
+        case HNSDCAP_EXEC_STATE_CAPTURE:
+            m_executionState = HNSDCAP_EXEC_STATE_CAPTURE_WAIT;
+
+        case HNSDCAP_EXEC_STATE_MOVE:
+            m_executionState = HNSDCAP_EXEC_STATE_MOVE_WAIT;
+
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
+            m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT;
+
+        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
+        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
+        case HNSDCAP_EXEC_STATE_PENDING:
+        case HNSDCAP_EXEC_STATE_NOTSET:
+        case HNSDCAP_EXEC_STATE_COMPLETE:
+            break;
+    }
+}
+
+void
+HNSDCaptureRecord::completedAction()
+{
+    switch( m_executionState )
+    {
+        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
+            m_executionState = HNSDCAP_EXEC_STATE_MOVE;
+
+        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
+            m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
+
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
+            m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
+
+        case HNSDCAP_EXEC_STATE_CAPTURE:
+        case HNSDCAP_EXEC_STATE_MOVE:
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
+        case HNSDCAP_EXEC_STATE_PENDING:
+        case HNSDCAP_EXEC_STATE_NOTSET:
+        case HNSDCAP_EXEC_STATE_COMPLETE:
+            break;
+    }
 }
 
 
@@ -186,6 +334,12 @@ HNSDImageManager::getCaptureJSON( std::string capID )
     }
 
     return ostr.str();
+}
+
+HNSDCaptureRecord*
+HNSDImageManager::getNextPendingCapture()
+{
+    return NULL;
 }
 
 

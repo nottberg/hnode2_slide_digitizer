@@ -417,10 +417,10 @@ JPEGSerializer::serialize( CaptureRequest *request )
     std::cout << "JPEG size is " << m_jpegLength << std::endl;
 
 	// Write everything out.
-	fp = fopen( request->getRawFilename().c_str(), "w" );
+	fp = fopen( request->getFileAndPath().c_str(), "w" );
 	if( !fp )
     {
-        std::cerr << "failed to open file " << request->getRawFilename() << std::endl;
+        std::cerr << "failed to open file " << request->getFileAndPath() << std::endl;
         goto cleanup;
     }
 

@@ -96,8 +96,11 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNSDAction     *m_curUserAction;
         HNReqWaitQueue  m_userActionQueue;
 
-        uint m_nextOpID;
-        std::map< std::string, HNSDHardwareOperation* > m_opMap;
+        HNSDCaptureRecord *m_curCapture;
+        HNSDHardwareOperation *m_activeHWOp;
+
+        //uint m_nextOpID;
+        //std::map< std::string, HNSDHardwareOperation* > m_opMap;
 
         // Format string codes
         uint m_errStrCode;

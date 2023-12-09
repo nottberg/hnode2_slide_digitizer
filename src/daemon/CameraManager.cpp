@@ -40,6 +40,8 @@ CaptureRequest::CaptureRequest()
     m_height = 3472;
 
     m_stride = 0;
+
+    m_filepath = "/tmp/tmp.jpg";
 }
 
 CaptureRequest::~CaptureRequest()
@@ -51,6 +53,12 @@ void
 CaptureRequest::setID( std::string id )
 {
     m_id = id;
+}
+
+void
+CaptureRequest::setFileAndPath( std::string fpath )
+{
+    m_filepath = fpath;
 }
 
 void
@@ -171,9 +179,9 @@ CaptureRequest::getOutputQuality()
 }
 
 std::string
-CaptureRequest::getRawFilename()
+CaptureRequest::getFileAndPath()
 {
-    return "/tmp/tmp.jpg";
+    return m_filepath;
 }
 
 

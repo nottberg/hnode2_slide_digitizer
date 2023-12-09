@@ -74,6 +74,7 @@ class CaptureRequest
 
         void setID( std::string id );
         void setImageFormat( CS_STILLMODE_T mode, uint width, uint height );
+        void setFileAndPath( std::string fpath );
 
         std::string getID();
 
@@ -96,7 +97,7 @@ class CaptureRequest
 
         uint getOutputQuality();
         
-        std::string getRawFilename();
+        std::string getFileAndPath();
 
         friend class Camera;
 
@@ -106,6 +107,8 @@ class CaptureRequest
         CM_RESULT_T initAfterRequestSet();
 
         std::string m_id;
+
+        std::string m_filepath;
 
         CS_STILLMODE_T m_mode;
 

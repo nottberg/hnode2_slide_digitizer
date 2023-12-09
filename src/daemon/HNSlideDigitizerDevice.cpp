@@ -84,10 +84,13 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_devState = HNSD_DEVSTATE_INIT;
 
     // Initialize the capture queue
-    m_nextOpID = 0;
+    //m_nextOpID = 0;
     m_curUserAction = NULL;
     m_userActionQueue.init();
 
+    m_curCapture = NULL;
+    m_activeHWOp = NULL;
+    
     // Initialize the image manager object
     m_imageMgr.start();
 
@@ -311,7 +314,64 @@ HNSlideDigitizerDevice::updateConfig()
 void
 HNSlideDigitizerDevice::loopIteration()
 {
-    // std::cout << "HNManagementDevice::loopIteration() - entry" << std::endl;
+    std::cout << "HNManagementDevice::loopIteration() - entry" << std::endl;
+
+    // If no current work then check for pending work
+    if( m_curCapture == NULL )
+    {
+        // Check if any new captures are ready to execute
+        m_curCapture = m_imageMgr.getNextPendingCapture();
+
+        // Signal that it has become active
+        if( m_curCapture != NULL )
+          m_curCapture->makeActive();
+    }
+
+    // If there is active work then see if there
+    // are additional step to be taken
+    if( m_curCapture != NULL )
+    {
+        HNSDCAP_ACTION_T nextStep;
+  
+        nextStep = m_curCapture->checkNextStep();
+
+        switch( nextStep )
+        {
+          case HNSDCAP_ACTION_WAIT:
+          break;
+
+          case HNSDCAP_ACTION_COMPLETE:
+          {
+            std::cout << "Current Capture complete" << std::endl;
+            m_curCapture = NULL;
+          }
+          break;
+
+          case HNSDCAP_ACTION_START_CAPTURE:
+          {           
+            //char idStr[64];
+
+            // Create a new capture record.
+            //sprintf( idStr, "hwop%u", m_nextOpID );
+            //m_nextOpID += 1;
+            
+            m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_SINGLE_CAPTURE );
+
+            CaptureRequest *crPtr = m_activeHWOp->getCaptureRequestPtr();
+
+            crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
+
+            crPtr->setFileAndPath( m_curCapture->registerNextFilename( "capture" ) );
+
+            // Kick off the capture thread
+            m_hardwareCtrl.startOperation( m_activeHWOp );
+          }
+          break;
+
+          case HNSDCAP_ACTION_START_ADVANCE:
+          break;
+        }
+    }
 
 }
 
@@ -424,27 +484,10 @@ HNSlideDigitizerDevice::startAction()
         case HNSD_AR_TYPE_START_SINGLE_CAPTURE:
         {
             m_imageMgr.createCaptures( 1, true );
-#if 0            
-            char idStr[64];
-
-            // Create a new capture record.
-            sprintf( idStr, "hwop%u", m_nextOpID );
-            m_nextOpID += 1;
-            
-            HNSDHardwareOperation *newOp = new HNSDHardwareOperation( idStr, HNHW_OPTYPE_SINGLE_CAPTURE );
-
-            CaptureRequest *crPtr = newOp->getCaptureRequestPtr();
-
-            crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
-
-            m_opMap.insert( std::pair< std::string, HNSDHardwareOperation* >( newOp->getID(), newOp ) );
 
             // Return the newly created capture id
-            m_curUserAction->setNewID( newOp->getID() );
+            //m_curUserAction->setNewID( newOp->getID() );
 
-            // Kick off the capture thread
-            m_hardwareCtrl.startOperation( newOp );
-#endif
             // Done with this request
             actBits = HNID_ACTBIT_COMPLETE;
         }
