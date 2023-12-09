@@ -89,8 +89,12 @@ HNSDCaptureRecord::setID( std::string id )
 void
 HNSDCaptureRecord::generateNewID( uint64_t timestamp, uint orderIndex )
 {
+    char tsStr[64];
     char idStr[64];
     
+    sprintf( tsStr, "%lu", timestamp );
+    m_timestampStr = tsStr;
+
     sprintf( idStr, "sdcr_%lu_%u", timestamp, orderIndex );
 
     setID( idStr );
@@ -114,13 +118,19 @@ HNSDCaptureRecord::getOrderIndex()
     return m_orderIndex;
 }
 
+bool
+HNSDCaptureRecord::isPending()
+{
+    return (m_executionState == HNSDCAP_EXEC_STATE_PENDING) ? true : false;
+}
+
 std::string
 HNSDCaptureRecord::registerNextFilename( std::string purpose )
 {
     HNSDCaptureFile newFile;
 
-    newFile.setPath("/tmp");
-    newFile.setTimestampStr("");
+    newFile.setPath( m_infoIntf->getStorageRootPath() );
+    newFile.setTimestampStr( m_timestampStr );
     newFile.setType( HNSDCAP_FT_JPEG );
     newFile.setPurpose( purpose );
     newFile.setIndex( m_nextFileIndex );
@@ -156,6 +166,12 @@ HNSDCaptureRecord::checkNextStep()
     }
 
     return HNSDCAP_ACTION_COMPLETE;
+}
+
+void 
+HNSDCaptureRecord::makePending()
+{
+    m_executionState = HNSDCAP_EXEC_STATE_PENDING;
 }
 
 void
@@ -272,6 +288,8 @@ HNSDImageManager::createCaptures( uint count, bool postAdvance )
     // Kick off the capture thread
     //m_hardwareCtrl.startOperation( newOp );
 
+    newCapRec.makePending();
+
     m_captureRecordMap.insert( std::pair< std::string, HNSDCaptureRecord >( newCapRec.getID(), newCapRec ) );
 
     return IMM_RESULT_SUCCESS;
@@ -339,7 +357,20 @@ HNSDImageManager::getCaptureJSON( std::string capID )
 HNSDCaptureRecord*
 HNSDImageManager::getNextPendingCapture()
 {
-    return NULL;
+    HNSDCaptureRecord *nextCap = NULL;
+
+    for( std::map< std::string, HNSDCaptureRecord >::iterator it = m_captureRecordMap.begin(); it != m_captureRecordMap.end(); it++ )
+    {
+        if( it->second.isPending() == false )
+            continue;
+
+        if( nextCap == NULL )
+            nextCap = &(it->second);
+        else if( it->second.getOrderIndex() < nextCap->getOrderIndex() )
+            nextCap = &(it->second);
+    }
+
+    return nextCap;
 }
 
 

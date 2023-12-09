@@ -89,9 +89,13 @@ class HNSDCaptureRecord
         std::string getID();
         uint getOrderIndex();
 
+        bool isPending();
+
         std::string registerNextFilename( std::string purpose );
         
         HNSDCAP_ACTION_T checkNextStep();
+
+        void makePending();
 
         void makeActive();
 
@@ -103,6 +107,8 @@ class HNSDCaptureRecord
         HNSDCaptureInfoInterface *m_infoIntf;
 
         std::string  m_id;
+
+        std::string m_timestampStr;
 
         uint m_orderIndex;
 

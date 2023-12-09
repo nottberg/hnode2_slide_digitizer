@@ -314,17 +314,20 @@ HNSlideDigitizerDevice::updateConfig()
 void
 HNSlideDigitizerDevice::loopIteration()
 {
-    std::cout << "HNManagementDevice::loopIteration() - entry" << std::endl;
-
     // If no current work then check for pending work
     if( m_curCapture == NULL )
     {
         // Check if any new captures are ready to execute
         m_curCapture = m_imageMgr.getNextPendingCapture();
 
+        std::cout << "HNManagementDevice::loopIteration() - getNextPending: " << m_curCapture << std::endl;
+
         // Signal that it has become active
         if( m_curCapture != NULL )
+        {
+          std::cout << "HNManagementDevice::loopIteration() - New Active Capture: " << m_curCapture->getID() << std::endl;
           m_curCapture->makeActive();
+        }
     }
 
     // If there is active work then see if there
@@ -334,6 +337,8 @@ HNSlideDigitizerDevice::loopIteration()
         HNSDCAP_ACTION_T nextStep;
   
         nextStep = m_curCapture->checkNextStep();
+
+        std::cout << "HNManagementDevice::loopIteration() - Capture - Next Step: " << nextStep << std::endl;
 
         switch( nextStep )
         {
@@ -354,7 +359,9 @@ HNSlideDigitizerDevice::loopIteration()
             // Create a new capture record.
             //sprintf( idStr, "hwop%u", m_nextOpID );
             //m_nextOpID += 1;
-            
+
+            std::cout << "HNManagementDevice::loopIteration() - Start hardware capture" << std::endl;
+
             m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_SINGLE_CAPTURE );
 
             CaptureRequest *crPtr = m_activeHWOp->getCaptureRequestPtr();
@@ -365,6 +372,9 @@ HNSlideDigitizerDevice::loopIteration()
 
             // Kick off the capture thread
             m_hardwareCtrl.startOperation( m_activeHWOp );
+
+            // Indicate the requested action has started.
+            m_curCapture->startedAction();
           }
           break;
 
@@ -426,10 +436,16 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
 
             case HNSD_HWSTATE_OPERATION_COMPLETE:
                 m_hardwareCtrl.finishOperation();
+                m_curCapture->completedAction();
+                delete m_activeHWOp;
+                m_activeHWOp = NULL;
             break;
 
             case HNSD_HWSTATE_OPERATION_FAILURE:
                 m_hardwareCtrl.finishOperation();
+                m_curCapture->completedAction();
+                delete m_activeHWOp;
+                m_activeHWOp = NULL;
             break;
         }
         
