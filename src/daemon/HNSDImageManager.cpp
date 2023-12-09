@@ -188,12 +188,15 @@ HNSDCaptureRecord::startedAction()
     {
         case HNSDCAP_EXEC_STATE_CAPTURE:
             m_executionState = HNSDCAP_EXEC_STATE_CAPTURE_WAIT;
+        break;
 
         case HNSDCAP_EXEC_STATE_MOVE:
             m_executionState = HNSDCAP_EXEC_STATE_MOVE_WAIT;
+        break;
 
         case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
             m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT;
+        break;
 
         case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
         case HNSDCAP_EXEC_STATE_MOVE_WAIT:
@@ -201,8 +204,10 @@ HNSDCaptureRecord::startedAction()
         case HNSDCAP_EXEC_STATE_PENDING:
         case HNSDCAP_EXEC_STATE_NOTSET:
         case HNSDCAP_EXEC_STATE_COMPLETE:
-            break;
+        break;
     }
+
+    std::cout << "CaptureRecord - StartedAction - id: " << m_id << "  nextState: " << m_executionState << std::endl;
 }
 
 void
@@ -212,12 +217,15 @@ HNSDCaptureRecord::completedAction()
     {
         case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
             m_executionState = HNSDCAP_EXEC_STATE_MOVE;
+        break;
 
         case HNSDCAP_EXEC_STATE_MOVE_WAIT:
             m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
+        break;
 
         case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
             m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
+        break;
 
         case HNSDCAP_EXEC_STATE_CAPTURE:
         case HNSDCAP_EXEC_STATE_MOVE:
@@ -225,8 +233,10 @@ HNSDCaptureRecord::completedAction()
         case HNSDCAP_EXEC_STATE_PENDING:
         case HNSDCAP_EXEC_STATE_NOTSET:
         case HNSDCAP_EXEC_STATE_COMPLETE:
-            break;
+        break;
     }
+
+    std::cout << "CaptureRecord - CompletedAction - id: " << m_id << "  nextState: " << m_executionState << std::endl;
 }
 
 
@@ -272,21 +282,6 @@ HNSDImageManager::createCaptures( uint count, bool postAdvance )
 
     newCapRec.generateNewID( timestamp, m_nextOrderIndex );
     m_nextOrderIndex += 1;
-
-            
-    //HNSDHardwareOperation *newOp = new HNSDHardwareOperation( idStr, HNHW_OPTYPE_SINGLE_CAPTURE );
-
-    //CaptureRequest *crPtr = newOp->getCaptureRequestPtr();
-
-    //crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
-
-    //m_opMap.insert( std::pair< std::string, HNSDHardwareOperation* >( newOp->getID(), newOp ) );
-
-    // Return the newly created capture id
-    //m_curUserAction->setNewID( newOp->getID() );
-
-    // Kick off the capture thread
-    //m_hardwareCtrl.startOperation( newOp );
 
     newCapRec.makePending();
 

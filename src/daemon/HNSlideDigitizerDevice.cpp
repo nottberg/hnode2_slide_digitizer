@@ -354,12 +354,6 @@ HNSlideDigitizerDevice::loopIteration()
 
           case HNSDCAP_ACTION_START_CAPTURE:
           {           
-            //char idStr[64];
-
-            // Create a new capture record.
-            //sprintf( idStr, "hwop%u", m_nextOpID );
-            //m_nextOpID += 1;
-
             std::cout << "HNManagementDevice::loopIteration() - Start hardware capture" << std::endl;
 
             m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_SINGLE_CAPTURE );
@@ -379,6 +373,17 @@ HNSlideDigitizerDevice::loopIteration()
           break;
 
           case HNSDCAP_ACTION_START_ADVANCE:
+            std::cout << "HNManagementDevice::loopIteration() - Start hardware advance" << std::endl;
+
+            m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_MOVE );
+
+            m_activeHWOp->setMoveParameters( HNHW_MDIR_FORWARD, 1 );
+
+            // Kick off the capture thread
+            m_hardwareCtrl.startOperation( m_activeHWOp );
+
+            // Indicate the requested action has started.
+            m_curCapture->startedAction();
           break;
         }
     }

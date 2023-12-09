@@ -167,6 +167,14 @@ HNSDHardwareControl::startOperation( HNSDHardwareOperation *op )
 			m_opThread->detach();
 		}
 		break;
+
+		case HNHW_OPTYPE_MOVE:
+		{
+			std::cout << "Starting move thread" << std::endl;
+    		m_opThread = new std::thread( HNSDHardwareControl::carouselMoveThread, this );
+			m_opThread->detach();
+		}
+		break;
 	}
 
     return HNSD_HC_RESULT_SUCCESS;

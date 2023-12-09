@@ -44,7 +44,8 @@ typedef enum HNSDHardwareStateEnum
 typedef enum HNSDHardwareOperationTypeEnum
 {
     HNHW_OPTYPE_NOTSET,
-    HNHW_OPTYPE_SINGLE_CAPTURE
+    HNHW_OPTYPE_SINGLE_CAPTURE,
+    HNHW_OPTYPE_MOVE
 }HNHW_OPTYPE_T;
 
 typedef enum HNSDHardwareMovementDirectionEnum
