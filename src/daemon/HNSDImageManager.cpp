@@ -464,6 +464,8 @@ HNSDImageManager::getCaptureJSON( std::string capID )
         // Fill in object fields
         jsRoot.set( "id", capPtr->getID() );
         jsRoot.set( "orderIndex", capPtr->getOrderIndex() );
+        jsRoot.set( "state", capPtr->getStateAsStr() );
+        jsRoot.set( "fileCount", capPtr->getFileCount() );
 
         // Add a file list array
         pjs::Array jsFileList;
