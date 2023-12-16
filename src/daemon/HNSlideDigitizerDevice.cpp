@@ -171,6 +171,39 @@ HNSlideDigitizerDevice::getState()
     return m_devState;
 }
 
+std::string
+HNSlideDigitizerDevice::getStateAsStr()
+{
+    switch( m_devState )
+    {
+      case HNSD_DEVSTATE_NOTSET:
+        return "notset";
+
+      case HNSD_DEVSTATE_INIT:
+        return "init";
+
+      case HNSD_DEVSTATE_IDLE:
+        return "idle";
+
+      case HNSD_DEVSTATE_CAPTURING:
+        return "capturing";
+
+      case HNSD_DEVSTATE_IMGPROC:
+        return "imgproc";
+
+      case HNSD_DEVSTATE_CAROSEL_CAPTURING:
+        return "carousel_capture";
+
+      case HNSD_DEVSTATE_CAROSEL_IMGPROC:
+        return "carousel_imgproc";
+
+      case HNSD_DEVSTATE_CAROSEL_ADVANCING:
+        return "carousel_advance";
+    }
+
+    return "unknown";
+}
+
 #if 0
 void
 HNSlideDigitizerDevice::generateNewHealthState()
@@ -314,6 +347,9 @@ HNSlideDigitizerDevice::updateConfig()
 void
 HNSlideDigitizerDevice::loopIteration()
 {
+    // Update the running timestamp
+    gettimeofday( &m_curTime, NULL );
+
     // If no current work then check for pending work
     if( m_curCapture == NULL )
     {
@@ -601,6 +637,10 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
     // GET "/hnode2/slide-digitizer/status"
     if( "getStatus" == opID )
     {
+        struct tm info;
+        char tdBuf[80];
+        std::string tdStr;
+
         std::cout << "=== Get Status Request ===" << std::endl;
     
         // Set response content type
@@ -609,14 +649,26 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
 
         // Create a json status object
         pjs::Object jsRoot;
-        jsRoot.set( "overallStatus", "OK" );
+        jsRoot.set( "deviceState", getStateAsStr() );
+
+        localtime_r( &m_curTime.tv_sec, &info );
+
+        strftime( tdBuf, sizeof(tdBuf),"%x", &info );
+        tdStr = tdBuf;
+        jsRoot.set( "date", tdStr );
+
+        strftime( tdBuf, sizeof(tdBuf),"%X", &info );
+        tdStr = tdBuf;
+        jsRoot.set( "time", tdStr );
+
+        //jsRoot.set( "timezone", );
 
         // Render response content
         std::ostream& ostr = opData->responseSend();
         try{ 
             pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
-        } catch( ... ) {
-            std::cout << "ERROR: Exception while serializing comment" << std::endl;
+        } catch( std::exception &ex ) {
+            std::cout << "ERROR: Exception while serializing: " << ex.what() << std::endl;
         }
 
         // Request was successful
@@ -790,6 +842,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
     else if( "getCaptureImage" == opID )
     {
         std::string captureID;
+        std::string fileIdxStr;
 
         if( opData->getParam( "captureid", captureID ) == true )
         {
@@ -798,11 +851,30 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
             return; 
         }
 
-        std::cout << "=== Get Capture Image Request (id: " << captureID << ") ===" << std::endl;
+        if( opData->getParam( "fileIndex", fileIdxStr ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "=== Get Capture Image Request (id: " << captureID << " , " << fileIdxStr << ") ===" << std::endl;
+
+        uint fileIndex = strtol( fileIdxStr.c_str(), NULL, 0);
+
+        std::string filePath;
+        if( m_imageMgr.getCapturePathAndFile( captureID, fileIndex, filePath ) != IMM_RESULT_SUCCESS )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        } 
+
+        std::cout << "=== Get Capture Image Request (filepath: " << filePath << ") ===" << std::endl;
 
         // Stat the image file to get its length
         struct stat statBuf;
-        if( stat( "/tmp/tmp.jpg", &statBuf ) != 0 )
+        if( stat( filePath.c_str(), &statBuf ) != 0 )
         {
             std::cout << "ERROR: Could not open image file" << std::endl;
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
@@ -819,7 +891,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         // Open a file stream
         std::ifstream jpegIF;
 
-        jpegIF.open( "/tmp/tmp.jpg" );
+        jpegIF.open( filePath );
 
         // Render response content
         std::ostream& ostr = opData->responseSend();
@@ -1084,7 +1156,7 @@ const std::string g_HNode2TestRest = R"(
         }
       },
 
-      "/hnode2/slide-digitizer/captures/{captureid}/image": {
+      "/hnode2/slide-digitizer/captures/{captureid}/image/{fileIndex}": {
         "get": {
           "summary": "Return the captured image.",
           "operationId": "getCaptureImage",

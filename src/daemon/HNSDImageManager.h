@@ -54,7 +54,10 @@ class HNSDCaptureFile
         void setPurpose( std::string purpose );
         void setTimestampStr( std::string tsStr );
 
+        std::string getFilename();
         std::string getPathAndFile();
+
+        void getInfo( std::string &fileName, std::string &purpose, std::string &tsStr );
 
     private:
         HNSDCAP_FT_T m_type;
@@ -89,6 +92,13 @@ class HNSDCaptureRecord
         std::string getID();
         uint getOrderIndex();
 
+        HNSDCAP_EXEC_STATE_T getState();
+        std::string getStateAsStr();
+
+        uint getFileCount();
+        IMM_RESULT_T getFileInfo( uint fileIndex, std::string &fileName, std::string &purpose, std::string &tsStr );
+        IMM_RESULT_T getFilePath( uint fileIndex, std::string &rtnPath );
+
         bool isPending();
 
         std::string registerNextFilename( std::string purpose );
@@ -114,7 +124,7 @@ class HNSDCaptureRecord
 
         uint m_nextFileIndex;
 
-        std::vector< HNSDCaptureFile > m_fileList;
+        std::vector< HNSDCaptureFile* > m_fileList;
 
         HNSDCAP_EXEC_STATE_T m_executionState;
 };
@@ -140,6 +150,8 @@ class HNSDImageManager : public HNSDCaptureInfoInterface
 
         HNSDCaptureRecord *getNextPendingCapture();
 
+        IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
+
     private:
 
         // The root path for storing images
@@ -150,7 +162,7 @@ class HNSDImageManager : public HNSDCaptureInfoInterface
         uint m_nextOrderIndex;
 
         // Capture Records
-        std::map< std::string, HNSDCaptureRecord > m_captureRecordMap;
+        std::map< std::string, HNSDCaptureRecord* > m_captureRecordMap;
 
 };
 

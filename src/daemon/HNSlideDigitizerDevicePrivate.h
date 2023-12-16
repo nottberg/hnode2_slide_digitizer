@@ -1,6 +1,8 @@
 #ifndef __HN_SLIDE_DIGITIZER_DEVICE_PRIVATE_H__
 #define __HN_SLIDE_DIGITIZER_DEVICE_PRIVATE_H__
 
+#include <sys/time.h>
+
 #include <string>
 #include <vector>
 
@@ -67,6 +69,8 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         // Current device state
         HNSD_DEVSTATE_T getState();
 
+        std::string getStateAsStr();
+
         // Poco funcions
         void defineOptions( Poco::Util::OptionSet& options );
         void handleOption( const std::string& name, const std::string& value );
@@ -85,6 +89,9 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNEPTrigger m_configUpdateTrigger;
 
         HNEPLoop m_testDeviceEvLoop;
+
+        // Running timestamp
+        struct timeval m_curTime;
 
         HNSD_DEVSTATE_T  m_devState;
 

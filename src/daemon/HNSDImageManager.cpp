@@ -53,15 +53,33 @@ HNSDCaptureFile::setTimestampStr( std::string tsStr )
     m_timestampStr = tsStr;
 }
 
+void
+HNSDCaptureFile::getInfo( std::string &fileName, std::string &purpose, std::string &tsStr )
+{
+    fileName = getFilename();
+    purpose = m_purpose;
+    tsStr = m_timestampStr;
+}
+
 std::string 
-HNSDCaptureFile::getPathAndFile()
+HNSDCaptureFile::getFilename()
 {
     char tmpFN[256];
-    std::string fullPath;
+    std::string rtnStr;
 
     sprintf( tmpFN, "hnsd_%s_%u_%s.jpg", m_timestampStr.c_str(), m_indexNum, m_purpose.c_str() );
     
-    fullPath = m_path + "/" + tmpFN;
+    rtnStr = tmpFN;
+
+    return rtnStr;
+}
+
+std::string 
+HNSDCaptureFile::getPathAndFile()
+{
+    std::string fullPath;
+
+    fullPath = m_path + "/" + getFilename();
 
     return fullPath;
 }
@@ -118,6 +136,79 @@ HNSDCaptureRecord::getOrderIndex()
     return m_orderIndex;
 }
 
+HNSDCAP_EXEC_STATE_T
+HNSDCaptureRecord::getState()
+{
+    return m_executionState;
+}
+
+std::string
+HNSDCaptureRecord::getStateAsStr()
+{
+    switch( m_executionState )
+    {
+        case HNSDCAP_EXEC_STATE_NOTSET:
+            return "NotSet";
+
+        case HNSDCAP_EXEC_STATE_PENDING:
+            return "Pending";
+
+        case HNSDCAP_EXEC_STATE_CAPTURE:
+            return "Capture";
+
+        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
+            return "CaptureWait";
+
+        case HNSDCAP_EXEC_STATE_MOVE:
+            return "Move";
+
+        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
+            return "MoveWait";
+
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
+            return "ImageProcess";
+
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
+            return "ImageProcessWait";
+
+        case HNSDCAP_EXEC_STATE_COMPLETE:
+            return "Complete";
+    }
+
+    return "Unknown";
+}
+
+uint
+HNSDCaptureRecord::getFileCount()
+{
+    return m_fileList.size();
+}
+
+IMM_RESULT_T
+HNSDCaptureRecord::getFileInfo( uint fileIndex, std::string &fileName, std::string &purpose, std::string &tsStr )
+{
+    if( fileIndex >= m_fileList.size() )
+        return IMM_RESULT_FAILURE;
+
+    m_fileList[fileIndex]->getInfo( fileName, purpose, tsStr );
+    return IMM_RESULT_SUCCESS;
+}
+
+IMM_RESULT_T
+HNSDCaptureRecord::getFilePath( uint fileIndex, std::string &rtnPath )
+{
+    std::string filename;
+
+    rtnPath.clear();
+
+    if( fileIndex >= m_fileList.size() )
+        return IMM_RESULT_FAILURE;
+
+    rtnPath = m_fileList[fileIndex]->getPathAndFile();
+
+    return IMM_RESULT_SUCCESS;
+}
+
 bool
 HNSDCaptureRecord::isPending()
 {
@@ -127,18 +218,18 @@ HNSDCaptureRecord::isPending()
 std::string
 HNSDCaptureRecord::registerNextFilename( std::string purpose )
 {
-    HNSDCaptureFile newFile;
+    HNSDCaptureFile *newFile = new HNSDCaptureFile;
 
-    newFile.setPath( m_infoIntf->getStorageRootPath() );
-    newFile.setTimestampStr( m_timestampStr );
-    newFile.setType( HNSDCAP_FT_JPEG );
-    newFile.setPurpose( purpose );
-    newFile.setIndex( m_nextFileIndex );
+    newFile->setPath( m_infoIntf->getStorageRootPath() );
+    newFile->setTimestampStr( m_timestampStr );
+    newFile->setType( HNSDCAP_FT_JPEG );
+    newFile->setPurpose( purpose );
+    newFile->setIndex( m_nextFileIndex );
     m_nextFileIndex += 1;
 
     m_fileList.push_back( newFile );
 
-    return newFile.getPathAndFile();
+    return newFile->getPathAndFile();
 }
 
 HNSDCAP_ACTION_T
@@ -274,18 +365,18 @@ HNSDImageManager::createCaptures( uint count, bool postAdvance )
 {
     struct timeval tv;
     uint64_t timestamp = 0;
-    HNSDCaptureRecord newCapRec( this );
+    HNSDCaptureRecord *newCapRec = new HNSDCaptureRecord( this );
 
     gettimeofday( &tv,NULL );
 
     timestamp = 1000000 * tv.tv_sec + tv.tv_usec;
 
-    newCapRec.generateNewID( timestamp, m_nextOrderIndex );
+    newCapRec->generateNewID( timestamp, m_nextOrderIndex );
     m_nextOrderIndex += 1;
 
-    newCapRec.makePending();
+    newCapRec->makePending();
 
-    m_captureRecordMap.insert( std::pair< std::string, HNSDCaptureRecord >( newCapRec.getID(), newCapRec ) );
+    m_captureRecordMap.insert( std::pair< std::string, HNSDCaptureRecord* >( newCapRec->getID(), newCapRec ) );
 
     return IMM_RESULT_SUCCESS;
 }
@@ -303,10 +394,45 @@ HNSDImageManager::getCaptureListJSON()
     // Create a json root array
     pjs::Array jsRoot;
 
-    for( std::map< std::string, HNSDCaptureRecord >::iterator rit = m_captureRecordMap.begin(); rit != m_captureRecordMap.end(); rit++ )
+    for( std::map< std::string, HNSDCaptureRecord* >::iterator rit = m_captureRecordMap.begin(); rit != m_captureRecordMap.end(); rit++ )
     { 
+        // Create a json root object
+        pjs::Object jsCapObj;
+
+        HNSDCaptureRecord *capPtr = rit->second;
+
+        // Fill in object fields
+        jsCapObj.set( "id", capPtr->getID() );
+        jsCapObj.set( "orderIndex", capPtr->getOrderIndex() );
+        jsCapObj.set( "state", capPtr->getStateAsStr() );
+        jsCapObj.set( "fileCount", capPtr->getFileCount() );
+
+        // Add a file list array
+        pjs::Array jsFileList;
+
+        // Populate generated file data
+        for( uint fidx = 0; fidx < capPtr->getFileCount(); fidx++ )
+        {
+            pjs::Object jsFileInfo;
+            std::string fileName;
+            std::string purpose;
+            std::string tsStr;
+
+            jsFileInfo.set( "index", fidx );
+
+            capPtr->getFileInfo( fidx, fileName, purpose, tsStr );
+
+            jsFileInfo.set( "filename", fileName );
+            jsFileInfo.set( "purpose", purpose );
+            jsFileInfo.set( "timestamp", tsStr );
+
+            jsFileList.add( jsFileInfo );
+        }
+
+        jsCapObj.set( "fileList", jsFileList );
+
         // Add new placement object to return list
-        jsRoot.add( rit->first );
+        jsRoot.add( jsCapObj );
     }
 
     try 
@@ -329,12 +455,39 @@ HNSDImageManager::getCaptureJSON( std::string capID )
     // Create a json root object
     pjs::Object jsRoot;
 
-    std::map< std::string, HNSDCaptureRecord >::iterator rit = m_captureRecordMap.find( capID );
+    std::map< std::string, HNSDCaptureRecord* >::iterator rit = m_captureRecordMap.find( capID );
 
     if( rit != m_captureRecordMap.end() )
     { 
-        // Add new placement object to return list
-        jsRoot.set( "id", rit->second.getID() );
+        HNSDCaptureRecord *capPtr = rit->second;
+
+        // Fill in object fields
+        jsRoot.set( "id", capPtr->getID() );
+        jsRoot.set( "orderIndex", capPtr->getOrderIndex() );
+
+        // Add a file list array
+        pjs::Array jsFileList;
+
+        // Populate generated file data
+        for( uint fidx = 0; fidx < capPtr->getFileCount(); fidx++ )
+        {
+            pjs::Object jsFileInfo;
+            std::string fileName;
+            std::string purpose;
+            std::string tsStr;
+
+            jsFileInfo.set( "index", fidx );
+
+            capPtr->getFileInfo( fidx, fileName, purpose, tsStr );
+
+            jsFileInfo.set( "filename", fileName );
+            jsFileInfo.set( "purpose", purpose );
+            jsFileInfo.set( "timestamp", tsStr );
+
+            jsFileList.add( jsFileInfo );
+        }
+
+        jsRoot.set( "fileList", jsFileList );
     }
 
     try 
@@ -354,18 +507,30 @@ HNSDImageManager::getNextPendingCapture()
 {
     HNSDCaptureRecord *nextCap = NULL;
 
-    for( std::map< std::string, HNSDCaptureRecord >::iterator it = m_captureRecordMap.begin(); it != m_captureRecordMap.end(); it++ )
+    for( std::map< std::string, HNSDCaptureRecord* >::iterator it = m_captureRecordMap.begin(); it != m_captureRecordMap.end(); it++ )
     {
-        if( it->second.isPending() == false )
+        if( it->second->isPending() == false )
             continue;
 
         if( nextCap == NULL )
-            nextCap = &(it->second);
-        else if( it->second.getOrderIndex() < nextCap->getOrderIndex() )
-            nextCap = &(it->second);
+            nextCap = it->second;
+        else if( it->second->getOrderIndex() < nextCap->getOrderIndex() )
+            nextCap = it->second;
     }
 
     return nextCap;
 }
 
+IMM_RESULT_T
+HNSDImageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath )
+{
+    rstPath.clear();
+
+    std::map< std::string, HNSDCaptureRecord* >::iterator it = m_captureRecordMap.find( captureID );
+
+    if( it == m_captureRecordMap.end() )
+        return IMM_RESULT_FAILURE;
+
+    return it->second->getFilePath( fileIndex, rstPath );
+}
 
