@@ -8,6 +8,8 @@
 #include <Poco/JSON/Parser.h>
 #include <Poco/StreamCopier.h>
 
+#include <opencv2/opencv.hpp>
+
 #include "HNSDImageManager.h"
 
 namespace pjs = Poco::JSON;
@@ -84,14 +86,139 @@ HNSDCaptureFile::getPathAndFile()
     return fullPath;
 }
 
+HNSDCaptureParameters::HNSDCaptureParameters()
+{
+    //std::map< std::string, std::string > m_nvPairs;
+}
 
-HNSDCaptureRecord::HNSDCaptureRecord( HNSDCaptureInfoInterface *infoIntf )
+HNSDCaptureParameters::~HNSDCaptureParameters()
+{
+
+}
+
+HNSDITDefaultRotate::HNSDITDefaultRotate()
+{
+
+}
+
+HNSDITDefaultRotate::~HNSDITDefaultRotate()
+{
+
+}
+
+void 
+HNSDITDefaultRotate::initSupportedParameters( HNSDCapturePipelineInterface *capture )
+{
+
+}
+
+bool
+HNSDITDefaultRotate::doesTransformApply( HNSDCapturePipelineInterface *capture )
+{
+    return true;
+}
+
+IMM_RESULT_T
+HNSDITDefaultRotate::applyTransform( HNSDCapturePipelineInterface *capture )
+{
+    std::cout << "HNSDITDefaultRotate::applyTransform - start" << std::endl;
+
+    // Read image as grayscale
+    cv::Mat srcImage;
+    cv::Mat rotImage;
+
+    std::string inFile = capture->getLastOutputPathAndFile();
+
+    srcImage = cv::imread( inFile, cv::IMREAD_COLOR );
+
+    if ( !srcImage.data )
+    {
+        printf("No image data \n");
+        return IMM_RESULT_FAILURE;
+    }
+
+    // Print width and height
+    uint ih = srcImage.rows;
+    uint iw = srcImage.cols;
+    printf( "HNSDITDefaultRotate - width: %u  height: %u\n", iw, ih );
+
+    cv::rotate( srcImage, rotImage, cv::ROTATE_90_COUNTERCLOCKWISE );
+
+    std::string outFile = capture->registerNextFilename( "bulkRotate" );
+
+    if( cv::imwrite( outFile, rotImage ) == false )
+    {
+        printf("Failed to write output file\n");
+        return IMM_RESULT_FAILURE;
+    }
+
+#if 0
+    // Crop to the region of interest
+    double cropfactor[4];
+    cropfactor[0] = 0.14;
+    cropfactor[1] = 0.1;
+    cropfactor[2] = 0.1;
+    cropfactor[3] = 0;
+
+    uint cx1 = (uint)( (double)ih * cropfactor[0] );
+    uint cx2 = ih - (uint)( (double)ih * cropfactor[1] );
+
+    uint cy1 = (uint)( (double)iw * cropfactor[2] );
+    uint cy2 = iw - (uint)( (double)ih * cropfactor[3] );
+
+    printf( "Crop Offsets - cx1: %u, cx2: %u, cy1: %u, cy2: %u\n", cx1, cx2, cy1, cy2 );
+
+    Mat cropImg = image( Range( cx1, cx2 ), Range( cy1, cy2 ) );
+#endif
+    return IMM_RESULT_SUCCESS;
+}
+
+HNSDTransformPipeline::HNSDTransformPipeline()
+{
+
+}
+
+HNSDTransformPipeline::~HNSDTransformPipeline()
+{
+
+}
+
+IMM_RESULT_T
+HNSDTransformPipeline::init()
+{
+    // Initialize the pipeline transformations.
+    HNSDITDefaultRotate* defRotate = new HNSDITDefaultRotate();
+    m_pipeline.push_back( defRotate );
+
+    return IMM_RESULT_SUCCESS;
+}
+
+uint 
+HNSDTransformPipeline::getTransformCount()
+{
+    return m_pipeline.size();
+}
+
+HNSDImageTransformInterface*
+HNSDTransformPipeline::getTransformByIndex( uint index )
+{
+    if( index >= m_pipeline.size() )
+        return NULL;
+
+    return m_pipeline[ index ];
+}
+
+HNSDCaptureRecord::HNSDCaptureRecord( HNSDIMRootInterface *infoIntf )
 {
     m_infoIntf = infoIntf;
 
     m_orderIndex = 0;
 
     m_executionState = HNSDCAP_EXEC_STATE_NOTSET;
+
+    m_curTransform = NULL;
+
+    m_curTransformIndex = 0;
 }
 
 HNSDCaptureRecord::~HNSDCaptureRecord()
@@ -134,6 +261,12 @@ uint
 HNSDCaptureRecord::getOrderIndex()
 {
     return m_orderIndex;
+}
+
+HNSDCaptureParameters*
+HNSDCaptureRecord::getParamPtr()
+{
+    return &m_params;
 }
 
 HNSDCAP_EXEC_STATE_T
@@ -232,6 +365,16 @@ HNSDCaptureRecord::registerNextFilename( std::string purpose )
     return newFile->getPathAndFile();
 }
 
+std::string
+HNSDCaptureRecord::getLastOutputPathAndFile()
+{
+    int len = m_fileList.size();
+    if( len == 0 )
+        return "";
+
+    return m_fileList[len-1]->getPathAndFile();
+}
+
 HNSDCAP_ACTION_T
 HNSDCaptureRecord::checkNextStep()
 {
@@ -249,7 +392,8 @@ HNSDCaptureRecord::checkNextStep()
         case HNSDCAP_EXEC_STATE_MOVE:
             return HNSDCAP_ACTION_START_ADVANCE;
 
-//        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
+        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
+            return HNSDCAP_ACTION_START_PIPELINE_STEP;
 
         case HNSDCAP_EXEC_STATE_NOTSET:
         case HNSDCAP_EXEC_STATE_COMPLETE:
@@ -311,11 +455,19 @@ HNSDCaptureRecord::completedAction()
         break;
 
         case HNSDCAP_EXEC_STATE_MOVE_WAIT:
-            m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
+            if( findNextPipelineStage() == true )
+                m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS;
+            else
+                m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
         break;
 
         case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
-            m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
+            m_curTransform = NULL;
+            m_curTransformIndex += 1;
+            if( findNextPipelineStage() == true )
+                m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS;
+            else
+                m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
         break;
 
         case HNSDCAP_EXEC_STATE_CAPTURE:
@@ -330,6 +482,37 @@ HNSDCaptureRecord::completedAction()
     std::cout << "CaptureRecord - CompletedAction - id: " << m_id << "  nextState: " << m_executionState << std::endl;
 }
 
+bool
+HNSDCaptureRecord::findNextPipelineStage()
+{
+    HNSDTransformPipeline *pline = m_infoIntf->getTransformPipelinePtr();
+
+    m_curTransform = NULL;
+
+    while( m_curTransformIndex < pline->getTransformCount() )
+    {
+        HNSDImageTransformInterface *transform = pline->getTransformByIndex( m_curTransformIndex );
+
+        if( transform->doesTransformApply( this ) )
+        {
+            m_curTransform = transform;
+            return true;
+        }
+
+        m_curTransformIndex += 1;
+    }
+
+    return false;
+}
+
+void
+HNSDCaptureRecord::executeTransform()
+{
+    if( m_curTransform == NULL )
+        return;
+
+    m_curTransform->applyTransform( this );
+}
 
 HNSDImageManager::HNSDImageManager()
 {
@@ -344,7 +527,13 @@ HNSDImageManager::~HNSDImageManager()
 IMM_RESULT_T
 HNSDImageManager::start()
 {
-    return IMM_RESULT_SUCCESS;
+    IMM_RESULT_T result = IMM_RESULT_SUCCESS;
+
+    result = m_transformPipeline.init();
+    if( result != IMM_RESULT_SUCCESS )
+        return result;
+
+    return result;
 }
 
 IMM_RESULT_T
@@ -536,3 +725,8 @@ HNSDImageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, 
     return it->second->getFilePath( fileIndex, rstPath );
 }
 
+HNSDTransformPipeline* 
+HNSDImageManager::getTransformPipelinePtr()
+{
+    return &m_transformPipeline;
+}

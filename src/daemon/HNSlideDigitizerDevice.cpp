@@ -409,6 +409,7 @@ HNSlideDigitizerDevice::loopIteration()
           break;
 
           case HNSDCAP_ACTION_START_ADVANCE:
+          {
             std::cout << "HNManagementDevice::loopIteration() - Start hardware advance" << std::endl;
 
             m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_MOVE );
@@ -420,7 +421,20 @@ HNSlideDigitizerDevice::loopIteration()
 
             // Indicate the requested action has started.
             m_curCapture->startedAction();
+          }
           break;
+
+          case HNSDCAP_ACTION_START_PIPELINE_STEP:
+          {
+            std::cout << "HNManagementDevice::loopIteration() - Start pipeline step" << std::endl;
+
+            m_curCapture->startedAction();
+
+            m_curCapture->executeTransform();
+
+            m_curCapture->completedAction();
+          }
+
         }
     }
 

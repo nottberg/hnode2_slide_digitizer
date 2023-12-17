@@ -33,6 +33,7 @@ typedef enum HNSDCaptureActionEnum
     HNSDCAP_ACTION_WAIT,
     HNSDCAP_ACTION_START_CAPTURE,
     HNSDCAP_ACTION_START_ADVANCE,
+    HNSDCAP_ACTION_START_PIPELINE_STEP,
     HNSDCAP_ACTION_COMPLETE
 }HNSDCAP_ACTION_T;
 
@@ -72,16 +73,84 @@ class HNSDCaptureFile
 
 };
 
-class HNSDCaptureInfoInterface
+class HNSDCaptureParameters
+{
+    public:
+        HNSDCaptureParameters();
+       ~HNSDCaptureParameters();
+
+    private:
+
+        std::map< std::string, std::string > m_nvPairs;
+
+};
+
+class HNSDCapturePipelineInterface
+{
+    public:
+        virtual HNSDCaptureParameters* getParamPtr() = 0;
+
+        virtual std::string registerNextFilename( std::string purpose ) = 0;
+
+        virtual std::string getLastOutputPathAndFile() = 0;
+};
+
+class HNSDImageTransformInterface
+{
+    public:
+
+        virtual void initSupportedParameters( HNSDCapturePipelineInterface *capture ) = 0;
+
+        virtual bool doesTransformApply( HNSDCapturePipelineInterface *capture ) = 0;
+
+        virtual IMM_RESULT_T applyTransform( HNSDCapturePipelineInterface *capture ) = 0;
+};
+
+class HNSDITDefaultRotate : public HNSDImageTransformInterface
+{
+    public:
+        HNSDITDefaultRotate();
+       ~HNSDITDefaultRotate();
+
+    private:
+
+        virtual void initSupportedParameters( HNSDCapturePipelineInterface *capture );
+
+        virtual bool doesTransformApply( HNSDCapturePipelineInterface *capture );
+
+        virtual IMM_RESULT_T applyTransform( HNSDCapturePipelineInterface *capture );
+};
+
+class HNSDTransformPipeline
+{
+    public:
+        HNSDTransformPipeline();
+       ~HNSDTransformPipeline();
+
+        IMM_RESULT_T init();
+
+        uint getTransformCount();
+
+        HNSDImageTransformInterface* getTransformByIndex( uint index );
+
+    private:
+
+        std::vector< HNSDImageTransformInterface* > m_pipeline;
+
+};
+
+class HNSDIMRootInterface
 {
     public:
         virtual std::string getStorageRootPath() = 0;
+
+        virtual HNSDTransformPipeline* getTransformPipelinePtr() = 0;
 };
 
-class HNSDCaptureRecord
+class HNSDCaptureRecord : public HNSDCapturePipelineInterface
 {
     public:
-        HNSDCaptureRecord( HNSDCaptureInfoInterface *infoIntf );
+        HNSDCaptureRecord( HNSDIMRootInterface *infoIntf );
        ~HNSDCaptureRecord();
 
         void generateNewID( uint64_t timestamp, uint orderIndex );
@@ -92,6 +161,8 @@ class HNSDCaptureRecord
         std::string getID();
         uint getOrderIndex();
 
+        virtual HNSDCaptureParameters* getParamPtr();
+
         HNSDCAP_EXEC_STATE_T getState();
         std::string getStateAsStr();
 
@@ -101,8 +172,10 @@ class HNSDCaptureRecord
 
         bool isPending();
 
-        std::string registerNextFilename( std::string purpose );
-        
+        virtual std::string registerNextFilename( std::string purpose );
+
+        virtual std::string getLastOutputPathAndFile();
+
         HNSDCAP_ACTION_T checkNextStep();
 
         void makePending();
@@ -113,8 +186,13 @@ class HNSDCaptureRecord
 
         void completedAction();
 
+        void executeTransform();
+
     private:
-        HNSDCaptureInfoInterface *m_infoIntf;
+
+        bool findNextPipelineStage();
+
+        HNSDIMRootInterface *m_infoIntf;
 
         std::string  m_id;
 
@@ -124,12 +202,18 @@ class HNSDCaptureRecord
 
         uint m_nextFileIndex;
 
+        HNSDCaptureParameters m_params;
+
         std::vector< HNSDCaptureFile* > m_fileList;
 
         HNSDCAP_EXEC_STATE_T m_executionState;
+
+        HNSDImageTransformInterface *m_curTransform;
+
+        uint m_curTransformIndex;
 };
 
-class HNSDImageManager : public HNSDCaptureInfoInterface
+class HNSDImageManager : public HNSDIMRootInterface
 {
     public:
          HNSDImageManager();
@@ -152,6 +236,8 @@ class HNSDImageManager : public HNSDCaptureInfoInterface
 
         IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
 
+        virtual HNSDTransformPipeline* getTransformPipelinePtr();
+
     private:
 
         // The root path for storing images
@@ -164,6 +250,8 @@ class HNSDImageManager : public HNSDCaptureInfoInterface
         // Capture Records
         std::map< std::string, HNSDCaptureRecord* > m_captureRecordMap;
 
+        // The image transformation pipeline
+        HNSDTransformPipeline m_transformPipeline;
 };
 
 #endif //__HNSD_IMAGE_MANAGER_H__
