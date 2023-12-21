@@ -73,69 +73,108 @@ class HNSDCaptureFile
 
 };
 
-class HNSDCaptureParameters
+class HNSDPipelineParameter
 {
     public:
-        HNSDCaptureParameters();
-       ~HNSDCaptureParameters();
+        HNSDPipelineParameter();
+       ~HNSDPipelineParameter();
+
+    private:
+        std::string m_name;
+
+        std::string m_defaultValue;
+
+        std::string m_curValue;
+};
+
+class HNSDPipelineParameterMap
+{
+    public:
+        HNSDPipelineParameterMap();
+       ~HNSDPipelineParameterMap();
+
+        void addParameter( std::string instance, std::string name, std::string defaultValue );
 
     private:
 
-        std::map< std::string, std::string > m_nvPairs;
+        std::map< std::string, HNSDPipelineParameter > m_nvPairs;
 
 };
 
-class HNSDCapturePipelineInterface
+class HNSDPipelineManagerInterface
 {
     public:
-        virtual HNSDCaptureParameters* getParamPtr() = 0;
+        virtual HNSDPipelineParameterMap* getParamPtr() = 0;
 
         virtual std::string registerNextFilename( std::string purpose ) = 0;
 
         virtual std::string getLastOutputPathAndFile() = 0;
 };
 
-class HNSDImageTransformInterface
+class HNSDPipelineStepBase
 {
     public:
+        HNSDPipelineStepBase( std::string instance );
+       ~HNSDPipelineStepBase();
 
-        virtual void initSupportedParameters( HNSDCapturePipelineInterface *capture ) = 0;
+        std::string getInstance();
 
-        virtual bool doesTransformApply( HNSDCapturePipelineInterface *capture ) = 0;
+        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture ) = 0;
 
-        virtual IMM_RESULT_T applyTransform( HNSDCapturePipelineInterface *capture ) = 0;
-};
+        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture ) = 0;
 
-class HNSDITDefaultRotate : public HNSDImageTransformInterface
-{
-    public:
-        HNSDITDefaultRotate();
-       ~HNSDITDefaultRotate();
+        virtual IMM_RESULT_T applyStep( HNSDPipelineManagerInterface *capture ) = 0;
 
     private:
 
-        virtual void initSupportedParameters( HNSDCapturePipelineInterface *capture );
-
-        virtual bool doesTransformApply( HNSDCapturePipelineInterface *capture );
-
-        virtual IMM_RESULT_T applyTransform( HNSDCapturePipelineInterface *capture );
+        std::string m_instance;
 };
 
-class HNSDTransformPipeline
+class HNSDPBulkRotate : public HNSDPipelineStepBase
 {
     public:
-        HNSDTransformPipeline();
-       ~HNSDTransformPipeline();
+        HNSDPBulkRotate( std::string instance );
+       ~HNSDPBulkRotate();
+
+    private:
+
+        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+
+        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+
+        virtual IMM_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+};
+
+class HNSDPCrop : public HNSDPipelineStepBase
+{
+    public:
+        HNSDPCrop( std::string instance );
+       ~HNSDPCrop();
+
+    private:
+
+        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+
+        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+
+        virtual IMM_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+};
+
+class HNSDPipeline
+{
+    public:
+        HNSDPipeline();
+       ~HNSDPipeline();
 
         IMM_RESULT_T init();
 
-        uint getTransformCount();
+        uint getStepCount();
 
-        HNSDImageTransformInterface* getTransformByIndex( uint index );
+        HNSDPipelineStepBase* getStepByIndex( uint index );
 
     private:
 
-        std::vector< HNSDImageTransformInterface* > m_pipeline;
+        std::vector< HNSDPipelineStepBase* > m_pipeline;
 
 };
 
@@ -144,10 +183,10 @@ class HNSDIMRootInterface
     public:
         virtual std::string getStorageRootPath() = 0;
 
-        virtual HNSDTransformPipeline* getTransformPipelinePtr() = 0;
+        virtual HNSDPipeline* getPipelinePtr() = 0;
 };
 
-class HNSDCaptureRecord : public HNSDCapturePipelineInterface
+class HNSDCaptureRecord : public HNSDPipelineManagerInterface
 {
     public:
         HNSDCaptureRecord( HNSDIMRootInterface *infoIntf );
@@ -161,7 +200,7 @@ class HNSDCaptureRecord : public HNSDCapturePipelineInterface
         std::string getID();
         uint getOrderIndex();
 
-        virtual HNSDCaptureParameters* getParamPtr();
+        virtual HNSDPipelineParameterMap* getParamPtr();
 
         HNSDCAP_EXEC_STATE_T getState();
         std::string getStateAsStr();
@@ -186,7 +225,7 @@ class HNSDCaptureRecord : public HNSDCapturePipelineInterface
 
         void completedAction();
 
-        void executeTransform();
+        void executeStep();
 
     private:
 
@@ -202,15 +241,15 @@ class HNSDCaptureRecord : public HNSDCapturePipelineInterface
 
         uint m_nextFileIndex;
 
-        HNSDCaptureParameters m_params;
+        HNSDPipelineParameterMap m_params;
 
         std::vector< HNSDCaptureFile* > m_fileList;
 
         HNSDCAP_EXEC_STATE_T m_executionState;
 
-        HNSDImageTransformInterface *m_curTransform;
+        HNSDPipelineStepBase *m_curStep;
 
-        uint m_curTransformIndex;
+        uint m_curStepIndex;
 };
 
 class HNSDImageManager : public HNSDIMRootInterface
@@ -236,7 +275,7 @@ class HNSDImageManager : public HNSDIMRootInterface
 
         IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
 
-        virtual HNSDTransformPipeline* getTransformPipelinePtr();
+        virtual HNSDPipeline* getPipelinePtr();
 
     private:
 
@@ -251,7 +290,7 @@ class HNSDImageManager : public HNSDIMRootInterface
         std::map< std::string, HNSDCaptureRecord* > m_captureRecordMap;
 
         // The image transformation pipeline
-        HNSDTransformPipeline m_transformPipeline;
+        HNSDPipeline m_pipeline;
 };
 
 #endif //__HNSD_IMAGE_MANAGER_H__

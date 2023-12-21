@@ -430,7 +430,7 @@ HNSlideDigitizerDevice::loopIteration()
 
             m_curCapture->startedAction();
 
-            m_curCapture->executeTransform();
+            m_curCapture->executeStep();
 
             m_curCapture->completedAction();
           }
