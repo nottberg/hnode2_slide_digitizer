@@ -86,12 +86,28 @@ HNSDCaptureFile::getPathAndFile()
     return fullPath;
 }
 
+HNSDPipelineParameter::HNSDPipelineParameter()
+{
+
+}
+
+HNSDPipelineParameter::~HNSDPipelineParameter()
+{
+
+}
+
 HNSDPipelineParameterMap::HNSDPipelineParameterMap()
 {
-    //std::map< std::string, std::string > m_nvPairs;
+    
 }
 
 HNSDPipelineParameterMap::~HNSDPipelineParameterMap()
+{
+
+}
+
+void
+HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, std::string defaultValue )
 {
 
 }
