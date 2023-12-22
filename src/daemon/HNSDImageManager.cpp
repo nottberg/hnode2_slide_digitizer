@@ -96,9 +96,57 @@ HNSDPipelineParameter::~HNSDPipelineParameter()
 
 }
 
+void
+HNSDPipelineParameter::setName( std::string instance, std::string name )
+{
+    m_name = instance + "." + name;
+}
+
+void
+HNSDPipelineParameter::setDesc( std::string description )
+{
+    m_description = description;
+}
+
+void
+HNSDPipelineParameter::setDefaultValue( std::string defaultValue )
+{
+    m_defaultValue = defaultValue;
+}
+
+void
+HNSDPipelineParameter::setActualValue( std::string actualValue )
+{
+    m_actualValue = actualValue;
+}
+
+std::string
+HNSDPipelineParameter::getName()
+{
+    return m_name;
+}
+
+std::string
+HNSDPipelineParameter::getDesc()
+{
+    return m_description;
+}
+
+std::string
+HNSDPipelineParameter::getDefaultValue()
+{
+    return m_defaultValue;
+}
+
+std::string
+HNSDPipelineParameter::getActualValueAsStr()
+{
+    return m_actualValue;
+}
+
 HNSDPipelineParameterMap::HNSDPipelineParameterMap()
 {
-    
+
 }
 
 HNSDPipelineParameterMap::~HNSDPipelineParameterMap()
@@ -107,7 +155,7 @@ HNSDPipelineParameterMap::~HNSDPipelineParameterMap()
 }
 
 void
-HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, std::string defaultValue )
+HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, std::string defaultValue, std::string description )
 {
 
 }
@@ -139,6 +187,12 @@ HNSDPBulkRotate::~HNSDPBulkRotate()
 
 }
 
+HNSD_PSTEP_TYPE_T
+HNSDPBulkRotate::getType()
+{
+    return HNSD_PSTEP_TYPE_TRANSFORM;
+}
+
 void 
 HNSDPBulkRotate::initSupportedParameters( HNSDPipelineManagerInterface *capture )
 {
@@ -146,9 +200,9 @@ HNSDPBulkRotate::initSupportedParameters( HNSDPipelineManagerInterface *capture 
     HNSDPipelineParameterMap *params = capture->getParamPtr();
 
     // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "bulk_rotate_enable", "1" );
-    params->addParameter( getInstance(), "bulk_rotate_degrees", "270" );
-    params->addParameter( getInstance(), "result_image_index", "" );
+    params->addParameter( getInstance(), "enable", "1", "desc" );
+    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    params->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
@@ -205,6 +259,12 @@ HNSDPCrop::~HNSDPCrop()
 
 }
 
+HNSD_PSTEP_TYPE_T
+HNSDPCrop::getType()
+{
+    return HNSD_PSTEP_TYPE_TRANSFORM;
+}
+
 void 
 HNSDPCrop::initSupportedParameters( HNSDPipelineManagerInterface *capture )
 {
@@ -212,9 +272,9 @@ HNSDPCrop::initSupportedParameters( HNSDPipelineManagerInterface *capture )
     HNSDPipelineParameterMap *params = capture->getParamPtr();
 
     // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "crop_enable", "1" );
-    params->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0" );
-    params->addParameter( getInstance(), "result_image_index", "" );
+    params->addParameter( getInstance(), "enable", "1", "desc" );
+    params->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0", "desc" );
+    params->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool

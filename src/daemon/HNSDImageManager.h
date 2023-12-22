@@ -79,12 +79,24 @@ class HNSDPipelineParameter
         HNSDPipelineParameter();
        ~HNSDPipelineParameter();
 
+        void setName( std::string instance, std::string name );
+        void setDesc( std::string description );
+        void setDefaultValue( std::string defaultValue );
+        void setActualValue( std::string actualValue );
+
+        std::string getName();
+        std::string getDesc();
+        std::string getDefaultValue();
+        std::string getActualValueAsStr();
+
     private:
         std::string m_name;
 
+        std::string m_description;
+
         std::string m_defaultValue;
 
-        std::string m_curValue;
+        std::string m_actualValue;
 };
 
 class HNSDPipelineParameterMap
@@ -93,7 +105,7 @@ class HNSDPipelineParameterMap
         HNSDPipelineParameterMap();
        ~HNSDPipelineParameterMap();
 
-        void addParameter( std::string instance, std::string name, std::string defaultValue );
+        void addParameter( std::string instance, std::string name, std::string defaultValue, std::string description );
 
     private:
 
@@ -111,6 +123,13 @@ class HNSDPipelineManagerInterface
         virtual std::string getLastOutputPathAndFile() = 0;
 };
 
+typedef enum HNSDPipelineStepTypeEnum
+{
+    HNSD_PSTEP_TYPE_NOTSET,
+    HNSD_PSTEP_TYPE_HARDWARE,
+    HNSD_PSTEP_TYPE_TRANSFORM
+}HNSD_PSTEP_TYPE_T;
+
 class HNSDPipelineStepBase
 {
     public:
@@ -118,6 +137,8 @@ class HNSDPipelineStepBase
        ~HNSDPipelineStepBase();
 
         std::string getInstance();
+
+        virtual HNSD_PSTEP_TYPE_T getType() = 0;
 
         virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture ) = 0;
 
@@ -138,6 +159,8 @@ class HNSDPBulkRotate : public HNSDPipelineStepBase
 
     private:
 
+        virtual HNSD_PSTEP_TYPE_T getType();
+
         virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
 
         virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
@@ -152,6 +175,8 @@ class HNSDPCrop : public HNSDPipelineStepBase
        ~HNSDPCrop();
 
     private:
+
+        virtual HNSD_PSTEP_TYPE_T getType();
 
         virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
 
