@@ -9,6 +9,8 @@
 
 #include <hnode2/HNReqWaitQueue.h>
 
+#include "HNSDPipeline.h"
+
 typedef enum HNSDImageManagerResultEnum
 {
     IMM_RESULT_SUCCESS,
@@ -73,6 +75,7 @@ class HNSDCaptureFile
 
 };
 
+#if 0
 class HNSDPipelineParameter
 {
     public:
@@ -151,6 +154,7 @@ class HNSDPipelineStepBase
         std::string m_instance;
 };
 
+
 class HNSDPBulkRotate : public HNSDPipelineStepBase
 {
     public:
@@ -165,7 +169,7 @@ class HNSDPBulkRotate : public HNSDPipelineStepBase
 
         virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
 
-        virtual IMM_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
 };
 
 class HNSDPCrop : public HNSDPipelineStepBase
@@ -182,8 +186,12 @@ class HNSDPCrop : public HNSDPipelineStepBase
 
         virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
 
-        virtual IMM_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
-};
+        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );};
+
+typedef enum HNSDPipelineTypeEnum {
+    HNSD_PIPETYPE_NOTSET,    
+    HNSD_PIPETYPE_IMAGE_CAPTURE
+}HNSD_PIPETYPE_T;
 
 class HNSDPipeline
 {
@@ -191,7 +199,7 @@ class HNSDPipeline
         HNSDPipeline();
        ~HNSDPipeline();
 
-        IMM_RESULT_T init();
+        IMM_RESULT_T init( HNSD_PIPETYPE_T type );
 
         uint getStepCount();
 
@@ -202,6 +210,7 @@ class HNSDPipeline
         std::vector< HNSDPipelineStepBase* > m_pipeline;
 
 };
+#endif
 
 class HNSDIMRootInterface
 {

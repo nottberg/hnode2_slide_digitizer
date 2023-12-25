@@ -86,6 +86,7 @@ HNSDCaptureFile::getPathAndFile()
     return fullPath;
 }
 
+#if 0
 HNSDPipelineParameter::HNSDPipelineParameter()
 {
 
@@ -211,7 +212,7 @@ HNSDPBulkRotate::doesStepApply( HNSDPipelineManagerInterface *capture )
     return true;
 }
 
-IMM_RESULT_T
+HNSDP_RESULT_T
 HNSDPBulkRotate::applyStep( HNSDPipelineManagerInterface *capture )
 {
     std::cout << "HNSDPBulkRotate::applyStep - start" << std::endl;
@@ -227,7 +228,7 @@ HNSDPBulkRotate::applyStep( HNSDPipelineManagerInterface *capture )
     if ( !srcImage.data )
     {
         printf("No image data \n");
-        return IMM_RESULT_FAILURE;
+        return HNSDP_RESULT_FAILURE;
     }
 
     // Print width and height
@@ -242,10 +243,10 @@ HNSDPBulkRotate::applyStep( HNSDPipelineManagerInterface *capture )
     if( cv::imwrite( outFile, rotImage ) == false )
     {
         printf("Failed to write output file\n");
-        return IMM_RESULT_FAILURE;
+        return HNSDP_RESULT_FAILURE;
     }
 
-    return IMM_RESULT_SUCCESS;
+    return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDPCrop::HNSDPCrop( std::string instance )
@@ -283,7 +284,7 @@ HNSDPCrop::doesStepApply( HNSDPipelineManagerInterface *capture )
     return true;
 }
 
-IMM_RESULT_T
+HNSDP_RESULT_T
 HNSDPCrop::applyStep( HNSDPipelineManagerInterface *capture )
 {
     std::cout << "HNSDPCrop::applyStep - start" << std::endl;
@@ -299,7 +300,7 @@ HNSDPCrop::applyStep( HNSDPipelineManagerInterface *capture )
     if ( !srcImage.data )
     {
         printf("No image data \n");
-        return IMM_RESULT_FAILURE;
+        return HNSDP_RESULT_FAILURE;
     }
 
     // Print width and height
@@ -329,10 +330,10 @@ HNSDPCrop::applyStep( HNSDPipelineManagerInterface *capture )
     if( cv::imwrite( outFile, cropImage ) == false )
     {
         printf("Failed to write output file\n");
-        return IMM_RESULT_FAILURE;
+        return HNSDP_RESULT_FAILURE;
     }
 
-    return IMM_RESULT_SUCCESS;
+    return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDPipeline::HNSDPipeline()
@@ -346,14 +347,22 @@ HNSDPipeline::~HNSDPipeline()
 }
 
 IMM_RESULT_T
-HNSDPipeline::init()
+HNSDPipeline::init( HNSD_PIPETYPE_T type )
 {
-    // Initialize the pipeline transformations.
-    HNSDPBulkRotate* bulkRotate = new HNSDPBulkRotate( "firstRotate" );
-    m_pipeline.push_back( bulkRotate );
+    switch( type )
+    {
+        case HNSD_PIPETYPE_IMAGE_CAPTURE:
+        {
+            // Initialize the pipeline transformations.
+            HNSDPBulkRotate* bulkRotate = new HNSDPBulkRotate( "firstRotate" );
+            m_pipeline.push_back( bulkRotate );
 
-    HNSDPCrop* crop = new HNSDPCrop( "cropRaw" );
-    m_pipeline.push_back( crop );
+            HNSDPCrop* crop = new HNSDPCrop( "cropRaw" );
+            m_pipeline.push_back( crop );
+        }
+        break;
+
+    }
 
     return IMM_RESULT_SUCCESS;
 }
@@ -372,6 +381,7 @@ HNSDPipeline::getStepByIndex( uint index )
 
     return m_pipeline[ index ];
 }
+#endif
 
 HNSDCaptureRecord::HNSDCaptureRecord( HNSDIMRootInterface *infoIntf )
 {
@@ -694,9 +704,9 @@ HNSDImageManager::start()
 {
     IMM_RESULT_T result = IMM_RESULT_SUCCESS;
 
-    result = m_pipeline.init();
-    if( result != IMM_RESULT_SUCCESS )
-        return result;
+    //result = m_pipeline.init( HNSD_PIPETYPE_IMAGE_CAPTURE );
+    //if( result != IMM_RESULT_SUCCESS )
+    //    return result;
 
     return result;
 }

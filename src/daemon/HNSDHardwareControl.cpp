@@ -471,3 +471,113 @@ HNSDHardwareControl::runCarouselMove()
 	updateOperationState( HNSD_HWSTATE_OPERATION_COMPLETE );
 
 }
+
+HNSDPSHardwareCapture::HNSDPSHardwareCapture( std::string instance )
+: HNSDPipelineStepBase( instance )
+{
+
+}
+
+HNSDPSHardwareCapture::~HNSDPSHardwareCapture()
+{
+
+}
+
+HNSD_PSTEP_TYPE_T
+HNSDPSHardwareCapture::getType()
+{
+    return HNSD_PSTEP_TYPE_HW_SPLIT_STEP;
+}
+
+void 
+HNSDPSHardwareCapture::initSupportedParameters( HNSDPipelineManagerInterface *capture )
+{
+    // Get access to the parameters
+    HNSDPipelineParameterMap *params = capture->getParamPtr();
+
+    // Add the parameters that apply to this transform
+    params->addParameter( getInstance(), "enable", "1", "desc" );
+    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    params->addParameter( getInstance(), "result_image_index", "", "desc" );
+}
+
+bool
+HNSDPSHardwareCapture::doesStepApply( HNSDPipelineManagerInterface *capture )
+{
+    return true;
+}
+
+HNSDP_RESULT_T
+HNSDPSHardwareCapture::applyStep( HNSDPipelineManagerInterface *capture )
+{
+    std::cout << "HNSDPSHardwareCapture::applyStep - start" << std::endl;
+
+    std::string outFile = capture->registerNextFilename( "imageCapture" );
+
+    //if( cv::imwrite( outFile, rotImage ) == false )
+    //{
+    //    printf("Failed to write output file\n");
+    //    return HNSDP_RESULT_FAILURE;
+    //}
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPSHardwareCapture::completeStep( HNSDPipelineManagerInterface *capture )
+{
+    std::cout << "HNSDPSHardwareCapture::completeStep - start" << std::endl;
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDPSHardwareMove::HNSDPSHardwareMove( std::string instance )
+: HNSDPipelineStepBase( instance )
+{
+
+}
+
+HNSDPSHardwareMove::~HNSDPSHardwareMove()
+{
+
+}
+
+HNSD_PSTEP_TYPE_T
+HNSDPSHardwareMove::getType()
+{
+    return HNSD_PSTEP_TYPE_HW_SPLIT_STEP;
+}
+
+void 
+HNSDPSHardwareMove::initSupportedParameters( HNSDPipelineManagerInterface *capture )
+{
+    // Get access to the parameters
+    HNSDPipelineParameterMap *params = capture->getParamPtr();
+
+    // Add the parameters that apply to this transform
+    params->addParameter( getInstance(), "enable", "1", "desc" );
+    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    params->addParameter( getInstance(), "result_image_index", "", "desc" );
+}
+
+bool
+HNSDPSHardwareMove::doesStepApply( HNSDPipelineManagerInterface *capture )
+{
+    return true;
+}
+
+HNSDP_RESULT_T
+HNSDPSHardwareMove::applyStep( HNSDPipelineManagerInterface *capture )
+{
+    std::cout << "HNSDPSHardwareMove::applyStep - start" << std::endl;
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPSHardwareMove::completeStep( HNSDPipelineManagerInterface *capture )
+{
+    std::cout << "HNSDPSHardwareMove::completeStep - start" << std::endl;
+
+    return HNSDP_RESULT_SUCCESS;
+}

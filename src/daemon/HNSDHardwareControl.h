@@ -12,6 +12,7 @@
 
 #include "GPIOManager.h"
 #include "CameraManager.h"
+#include "HNSDPipeline.h"
 
 typedef enum HNSDHardwareControlResult
 {
@@ -157,6 +158,44 @@ class HNSDHardwareControl : public CameraEventInf
         void runCarouselMove();
 
         //void requestComplete( libcamera::Request *request );
+};
+
+class HNSDPSHardwareCapture : public HNSDPipelineStepBase
+{
+    public:
+        HNSDPSHardwareCapture( std::string instance );
+       ~HNSDPSHardwareCapture();
+
+    private:
+
+        virtual HNSD_PSTEP_TYPE_T getType();
+
+        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+
+        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+
+        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineManagerInterface *capture );
+};
+
+class HNSDPSHardwareMove : public HNSDPipelineStepBase
+{
+    public:
+        HNSDPSHardwareMove( std::string instance );
+       ~HNSDPSHardwareMove();
+
+    private:
+
+        virtual HNSD_PSTEP_TYPE_T getType();
+
+        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+
+        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+
+        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineManagerInterface *capture );
 };
 
 #endif // __HNSD_HARDWARE_CONTROL_H__
