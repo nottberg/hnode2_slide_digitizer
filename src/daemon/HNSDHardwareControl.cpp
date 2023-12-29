@@ -472,45 +472,45 @@ HNSDHardwareControl::runCarouselMove()
 
 }
 
-HNSDPSHardwareCapture::HNSDPSHardwareCapture( std::string instance )
+HNSDPSHardwareSingleCapture::HNSDPSHardwareSingleCapture( std::string instance )
 : HNSDPipelineStepBase( instance )
 {
 
 }
 
-HNSDPSHardwareCapture::~HNSDPSHardwareCapture()
+HNSDPSHardwareSingleCapture::~HNSDPSHardwareSingleCapture()
 {
 
 }
 
 HNSD_PSTEP_TYPE_T
-HNSDPSHardwareCapture::getType()
+HNSDPSHardwareSingleCapture::getType()
 {
     return HNSD_PSTEP_TYPE_HW_SPLIT_STEP;
 }
 
 void 
-HNSDPSHardwareCapture::initSupportedParameters( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareSingleCapture::initSupportedParameters( HNSDPipelineClientInterface *capture )
 {
     // Get access to the parameters
-    HNSDPipelineParameterMap *params = capture->getParamPtr();
+    HNSDPipeline *pipeline = capture->getPipelinePtr();
 
     // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "enable", "1", "desc" );
-    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    params->addParameter( getInstance(), "result_image_index", "", "desc" );
+    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
+    pipeline->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSHardwareCapture::doesStepApply( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareSingleCapture::doesStepApply( HNSDPipelineClientInterface *capture )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareCapture::applyStep( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareSingleCapture::applyStep( HNSDPipelineClientInterface *capture )
 {
-    std::cout << "HNSDPSHardwareCapture::applyStep - start" << std::endl;
+    std::cout << "HNSDPSHardwareSingleCapture::applyStep - start" << std::endl;
 
     std::string outFile = capture->registerNextFilename( "imageCapture" );
 
@@ -524,11 +524,29 @@ HNSDPSHardwareCapture::applyStep( HNSDPipelineManagerInterface *capture )
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareCapture::completeStep( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareSingleCapture::completeStep( HNSDPipelineClientInterface *capture )
 {
-    std::cout << "HNSDPSHardwareCapture::completeStep - start" << std::endl;
+    std::cout << "HNSDPSHardwareSingleCapture::completeStep - start" << std::endl;
 
     return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+{
+    std::cout << "HNSDPSHardwareSingleCapture::createHardwareOperation() - Start hardware capture" << std::endl;
+
+    HNSDHardwareOperation *opPtr = new HNSDHardwareOperation( getInstance(), HNHW_OPTYPE_SINGLE_CAPTURE );
+
+    CaptureRequest *crPtr = opPtr->getCaptureRequestPtr();
+
+    crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
+
+    crPtr->setFileAndPath( capture->registerNextFilename( "capture" ) );
+
+	*rtnPtr = opPtr;
+
+	return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDPSHardwareMove::HNSDPSHardwareMove( std::string instance )
@@ -549,25 +567,25 @@ HNSDPSHardwareMove::getType()
 }
 
 void 
-HNSDPSHardwareMove::initSupportedParameters( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareMove::initSupportedParameters( HNSDPipelineClientInterface *capture )
 {
     // Get access to the parameters
-    HNSDPipelineParameterMap *params = capture->getParamPtr();
+    HNSDPipeline *pipeline = capture->getPipelinePtr();
 
     // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "enable", "1", "desc" );
-    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    params->addParameter( getInstance(), "result_image_index", "", "desc" );
+    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
+    pipeline->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSHardwareMove::doesStepApply( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareMove::doesStepApply( HNSDPipelineClientInterface *capture )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareMove::applyStep( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareMove::applyStep( HNSDPipelineClientInterface *capture )
 {
     std::cout << "HNSDPSHardwareMove::applyStep - start" << std::endl;
 
@@ -575,9 +593,24 @@ HNSDPSHardwareMove::applyStep( HNSDPipelineManagerInterface *capture )
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareMove::completeStep( HNSDPipelineManagerInterface *capture )
+HNSDPSHardwareMove::completeStep( HNSDPipelineClientInterface *capture )
 {
     std::cout << "HNSDPSHardwareMove::completeStep - start" << std::endl;
 
     return HNSDP_RESULT_SUCCESS;
+}
+
+
+HNSDP_RESULT_T
+HNSDPSHardwareMove::createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+{
+    std::cout << "HNSDPSHardwareMove::createHardwareOperation() - Start hardware advance" << std::endl;
+
+    HNSDHardwareOperation *opPtr = new HNSDHardwareOperation( getInstance(), HNHW_OPTYPE_MOVE );
+
+    opPtr->setMoveParameters( HNHW_MDIR_FORWARD, 1 );
+
+	*rtnPtr = opPtr;
+
+	return HNSDP_RESULT_SUCCESS;
 }

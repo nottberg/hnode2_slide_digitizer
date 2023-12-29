@@ -18,6 +18,7 @@
 #include "CameraManager.h"
 #include "HNSDAction.h"
 #include "HNSDHardwareControl.h"
+#include "HNSDPipelineManager.h"
 
 #define HNODE_SLIDE_DIGITIZER_DEVTYPE   "hnode2-slide-digitizer-device"
 
@@ -103,8 +104,13 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNSDAction     *m_curUserAction;
         HNReqWaitQueue  m_userActionQueue;
 
-        HNSDCaptureRecord *m_curCapture;
+        HNSDPipelineManager m_pipelineMgr;
+
+        HNSDCaptureRecord     *m_curCapture;
+        HNSDPipeline          *m_activePipeline;        
         HNSDHardwareOperation *m_activeHWOp;
+
+
 
         //uint m_nextOpID;
         //std::map< std::string, HNSDHardwareOperation* > m_opMap;

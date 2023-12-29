@@ -9,19 +9,21 @@
 
 #include <hnode2/HNReqWaitQueue.h>
 
-class HNSDPipelineManager
+class HNSDPipelineManager : public HNSDPipelineManagerIntf
 {
     public:
         HNSDPipelineManager();
        ~HNSDPipelineManager();
 
-        HNSDPipeline *allocatePipeline( HNSDP_TYPE_T type );
+        virtual HNSDP_RESULT_T allocatePipeline( HNSDP_TYPE_T type, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline );
 
-        void releasePipeline( HNSDPipeline *pipeline );
+        virtual HNSDP_RESULT_T submitPipelineForExecution( HNSDPipeline *pipeline );
 
-        HNSDP_RESULT_T allocatePipeline( HNSDP_TYPE_T type, HNSDPipeline **rtnPipeline );
-        void releasePipeline( HNSDPipeline **pipeline );
+        virtual void releasePipeline( HNSDPipeline **pipeline );
 
+    private:
+
+        std::list< HNSDPipeline* > m_pendingQueue;
 };
 
 #endif //__HNSD_PIPELINE_MANAGER_H__

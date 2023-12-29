@@ -92,7 +92,7 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_activeHWOp = NULL;
     
     // Initialize the image manager object
-    m_imageMgr.start();
+    m_imageMgr.start( &m_pipelineMgr );
 
     // Initialize the hardware control object
     m_hardwareCtrl.init( &m_hardwareNotifyTrigger );
@@ -344,6 +344,40 @@ HNSlideDigitizerDevice::updateConfig()
     return HNSDD_RESULT_SUCCESS;
 }
 
+/*
+bool
+HNSlideDigitizerDevice::findNextPipelineStage()
+{
+    HNSDPipeline *pline = m_infoIntf->getPipelinePtr();
+
+    m_curStep = NULL;
+
+    while( m_curStepIndex < pline->getStepCount() )
+    {
+        HNSDPipelineStepBase *step = pline->getStepByIndex( m_curStepIndex );
+
+        if( step->doesStepApply( this ) )
+        {
+            m_curStep = step;
+            return true;
+        }
+
+        m_curStepIndex += 1;
+    }
+
+    return false;
+}
+
+void
+HNSlideDigitizerDevice::::executePipeline()
+{
+    if( m_curStep == NULL )
+        return;
+
+    m_curStep->applyStep( this );
+}
+*/
+
 void
 HNSlideDigitizerDevice::loopIteration()
 {
@@ -362,77 +396,63 @@ HNSlideDigitizerDevice::loopIteration()
         if( m_curCapture != NULL )
         {
           std::cout << "HNManagementDevice::loopIteration() - New Active Capture: " << m_curCapture->getID() << std::endl;
-          m_curCapture->makeActive();
+          m_activePipeline = m_curCapture->getPipelinePtr();
+          m_activePipeline->prepareForExecution();
         }
     }
 
     // If there is active work then see if there
     // are additional step to be taken
-    if( m_curCapture != NULL )
+    if( m_activePipeline != NULL )
     {
-        HNSDCAP_ACTION_T nextStep;
+        HNSDP_ACTION_T nextAction;
   
-        nextStep = m_curCapture->checkNextStep();
+        nextAction = m_activePipeline->checkForStepAction();
 
-        std::cout << "HNManagementDevice::loopIteration() - Capture - Next Step: " << nextStep << std::endl;
+        std::cout << "HNManagementDevice::loopIteration() - Capture - Next Step: " << nextAction << std::endl;
 
-        switch( nextStep )
+        switch( nextAction )
         {
-          case HNSDCAP_ACTION_WAIT:
+          case HNSDP_ACTION_WAIT:
           break;
 
-          case HNSDCAP_ACTION_COMPLETE:
+          case HNSDP_ACTION_COMPLETE:
           {
-            std::cout << "Current Capture complete" << std::endl;
+            std::cout << "Pipeline complete" << std::endl;
+            m_activePipeline->finishExecution();
+            m_activePipeline = NULL;
             m_curCapture = NULL;
           }
           break;
 
-          case HNSDCAP_ACTION_START_CAPTURE:
-          {           
-            std::cout << "HNManagementDevice::loopIteration() - Start hardware capture" << std::endl;
-
-            m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_SINGLE_CAPTURE );
-
-            CaptureRequest *crPtr = m_activeHWOp->getCaptureRequestPtr();
-
-            crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
-
-            crPtr->setFileAndPath( m_curCapture->registerNextFilename( "capture" ) );
-
-            // Kick off the capture thread
-            m_hardwareCtrl.startOperation( m_activeHWOp );
-
-            // Indicate the requested action has started.
-            m_curCapture->startedAction();
-          }
-          break;
-
-          case HNSDCAP_ACTION_START_ADVANCE:
+          case HNSDP_ACTION_HW_SPLIT_STEP:
           {
-            std::cout << "HNManagementDevice::loopIteration() - Start hardware advance" << std::endl;
+            // Create the hardware operation for the step
+            m_activePipeline->createHardwareOperation( &m_activeHWOp );
 
-            m_activeHWOp = new HNSDHardwareOperation( m_curCapture->getID(), HNHW_OPTYPE_MOVE );
-
-            m_activeHWOp->setMoveParameters( HNHW_MDIR_FORWARD, 1 );
-
-            // Kick off the capture thread
+            // Kick off the hardware thread
             m_hardwareCtrl.startOperation( m_activeHWOp );
 
             // Indicate the requested action has started.
-            m_curCapture->startedAction();
+            m_activePipeline->startedStep();
           }
           break;
 
-          case HNSDCAP_ACTION_START_PIPELINE_STEP:
+          case HNSDP_ACTION_SPLIT_STEP:
+          {
+
+          }
+          break;
+
+          case HNSDP_ACTION_INLINE:
           {
             std::cout << "HNManagementDevice::loopIteration() - Start pipeline step" << std::endl;
 
-            m_curCapture->startedAction();
+            m_activePipeline->startedStep();
 
-            m_curCapture->executeStep();
+            m_activePipeline->executeInlineStep();
 
-            m_curCapture->completedAction();
+            m_activePipeline->completedStep();
           }
 
         }
@@ -491,15 +511,13 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
 
             case HNSD_HWSTATE_OPERATION_COMPLETE:
                 m_hardwareCtrl.finishOperation();
-                m_curCapture->completedAction();
-                delete m_activeHWOp;
+                m_activePipeline->hardwareOperationCompleted( m_activeHWOp );
                 m_activeHWOp = NULL;
             break;
 
             case HNSD_HWSTATE_OPERATION_FAILURE:
                 m_hardwareCtrl.finishOperation();
-                m_curCapture->completedAction();
-                delete m_activeHWOp;
+                m_activePipeline->hardwareOperationCompleted( m_activeHWOp );
                 m_activeHWOp = NULL;
             break;
         }

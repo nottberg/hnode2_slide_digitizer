@@ -19,13 +19,13 @@ class HNSDPSOrthogonalRotate : public HNSDPipelineStepBase
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
 
-        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T executeInline( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
 };
 
 class HNSDPSCrop : public HNSDPipelineStepBase
@@ -38,13 +38,13 @@ class HNSDPSCrop : public HNSDPipelineStepBase
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
 
-        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T executeInline( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
 };
 
 #endif //__HNSD_IMAGE_TRANSFORM_H__

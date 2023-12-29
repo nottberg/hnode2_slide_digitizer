@@ -32,27 +32,27 @@ HNSDPSOrthogonalRotate::getType()
 }
 
 void 
-HNSDPSOrthogonalRotate::initSupportedParameters( HNSDPipelineManagerInterface *capture )
+HNSDPSOrthogonalRotate::initSupportedParameters( HNSDPipelineClientInterface *capture )
 {
     // Get access to the parameters
-    HNSDPipelineParameterMap *params = capture->getParamPtr();
+    HNSDPipeline *pipeline = capture->getPipelinePtr();
 
     // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "enable", "1", "desc" );
-    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    params->addParameter( getInstance(), "result_image_index", "", "desc" );
+    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
+    pipeline->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSOrthogonalRotate::doesStepApply( HNSDPipelineManagerInterface *capture )
+HNSDPSOrthogonalRotate::doesStepApply( HNSDPipelineClientInterface *capture )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSOrthogonalRotate::applyStep( HNSDPipelineManagerInterface *capture )
+HNSDPSOrthogonalRotate::executeInline( HNSDPipelineClientInterface *capture )
 {
-    std::cout << "HNSDPSOrthogonalRotate::applyStep - start" << std::endl;
+    std::cout << "HNSDPSOrthogonalRotate::executeInline - start" << std::endl;
 
     // Read image as grayscale
     cv::Mat srcImage;
@@ -87,7 +87,7 @@ HNSDPSOrthogonalRotate::applyStep( HNSDPipelineManagerInterface *capture )
 }
 
 HNSDP_RESULT_T
-HNSDPSOrthogonalRotate::completeStep( HNSDPipelineManagerInterface *capture )
+HNSDPSOrthogonalRotate::completeStep( HNSDPipelineClientInterface *capture )
 {
     std::cout << "HNSDPSOrthogonalRotate::completeStep - start" << std::endl;
 
@@ -112,27 +112,27 @@ HNSDPSCrop::getType()
 }
 
 void 
-HNSDPSCrop::initSupportedParameters( HNSDPipelineManagerInterface *capture )
+HNSDPSCrop::initSupportedParameters( HNSDPipelineClientInterface *capture )
 {
     // Get access to the parameters
-    HNSDPipelineParameterMap *params = capture->getParamPtr();
+    HNSDPipeline *pipeline = capture->getPipelinePtr();
 
     // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "enable", "1", "desc" );
-    params->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0", "desc" );
-    params->addParameter( getInstance(), "result_image_index", "", "desc" );
+    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
+    pipeline->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0", "desc" );
+    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSCrop::doesStepApply( HNSDPipelineManagerInterface *capture )
+HNSDPSCrop::doesStepApply( HNSDPipelineClientInterface *capture )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSCrop::applyStep( HNSDPipelineManagerInterface *capture )
+HNSDPSCrop::executeInline( HNSDPipelineClientInterface *capture )
 {
-    std::cout << "HNSDPSCrop::applyStep - start" << std::endl;
+    std::cout << "HNSDPSCrop::executeInline - start" << std::endl;
 
     // Read image as grayscale
     cv::Mat srcImage;
@@ -182,7 +182,7 @@ HNSDPSCrop::applyStep( HNSDPipelineManagerInterface *capture )
 }
 
 HNSDP_RESULT_T
-HNSDPSCrop::completeStep( HNSDPipelineManagerInterface *capture )
+HNSDPSCrop::completeStep( HNSDPipelineClientInterface *capture )
 {
     std::cout << "HNSDPSCrop::completeStep - start" << std::endl;
 

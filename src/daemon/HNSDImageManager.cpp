@@ -86,303 +86,6 @@ HNSDCaptureFile::getPathAndFile()
     return fullPath;
 }
 
-#if 0
-HNSDPipelineParameter::HNSDPipelineParameter()
-{
-
-}
-
-HNSDPipelineParameter::~HNSDPipelineParameter()
-{
-
-}
-
-void
-HNSDPipelineParameter::setName( std::string instance, std::string name )
-{
-    m_name = instance + "." + name;
-}
-
-void
-HNSDPipelineParameter::setDesc( std::string description )
-{
-    m_description = description;
-}
-
-void
-HNSDPipelineParameter::setDefaultValue( std::string defaultValue )
-{
-    m_defaultValue = defaultValue;
-}
-
-void
-HNSDPipelineParameter::setActualValue( std::string actualValue )
-{
-    m_actualValue = actualValue;
-}
-
-std::string
-HNSDPipelineParameter::getName()
-{
-    return m_name;
-}
-
-std::string
-HNSDPipelineParameter::getDesc()
-{
-    return m_description;
-}
-
-std::string
-HNSDPipelineParameter::getDefaultValue()
-{
-    return m_defaultValue;
-}
-
-std::string
-HNSDPipelineParameter::getActualValueAsStr()
-{
-    return m_actualValue;
-}
-
-HNSDPipelineParameterMap::HNSDPipelineParameterMap()
-{
-
-}
-
-HNSDPipelineParameterMap::~HNSDPipelineParameterMap()
-{
-
-}
-
-void
-HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, std::string defaultValue, std::string description )
-{
-
-}
-
-HNSDPipelineStepBase::HNSDPipelineStepBase( std::string instance )
-{
-    m_instance = instance;
-}
-
-HNSDPipelineStepBase::~HNSDPipelineStepBase()
-{
-
-}
-
-std::string
-HNSDPipelineStepBase::getInstance()
-{
-    return m_instance;
-}
-
-HNSDPBulkRotate::HNSDPBulkRotate( std::string instance )
-: HNSDPipelineStepBase( instance )
-{
-
-}
-
-HNSDPBulkRotate::~HNSDPBulkRotate()
-{
-
-}
-
-HNSD_PSTEP_TYPE_T
-HNSDPBulkRotate::getType()
-{
-    return HNSD_PSTEP_TYPE_TRANSFORM;
-}
-
-void 
-HNSDPBulkRotate::initSupportedParameters( HNSDPipelineManagerInterface *capture )
-{
-    // Get access to the parameters
-    HNSDPipelineParameterMap *params = capture->getParamPtr();
-
-    // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "enable", "1", "desc" );
-    params->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    params->addParameter( getInstance(), "result_image_index", "", "desc" );
-}
-
-bool
-HNSDPBulkRotate::doesStepApply( HNSDPipelineManagerInterface *capture )
-{
-    return true;
-}
-
-HNSDP_RESULT_T
-HNSDPBulkRotate::applyStep( HNSDPipelineManagerInterface *capture )
-{
-    std::cout << "HNSDPBulkRotate::applyStep - start" << std::endl;
-
-    // Read image as grayscale
-    cv::Mat srcImage;
-    cv::Mat rotImage;
-
-    std::string inFile = capture->getLastOutputPathAndFile();
-
-    srcImage = cv::imread( inFile, cv::IMREAD_COLOR );
-
-    if ( !srcImage.data )
-    {
-        printf("No image data \n");
-        return HNSDP_RESULT_FAILURE;
-    }
-
-    // Print width and height
-    uint ih = srcImage.rows;
-    uint iw = srcImage.cols;
-    printf( "HNSDPBulkRotate - width: %u  height: %u\n", iw, ih );
-
-    cv::rotate( srcImage, rotImage, cv::ROTATE_90_COUNTERCLOCKWISE );
-
-    std::string outFile = capture->registerNextFilename( "bulkRotate" );
-
-    if( cv::imwrite( outFile, rotImage ) == false )
-    {
-        printf("Failed to write output file\n");
-        return HNSDP_RESULT_FAILURE;
-    }
-
-    return HNSDP_RESULT_SUCCESS;
-}
-
-HNSDPCrop::HNSDPCrop( std::string instance )
-: HNSDPipelineStepBase( instance )
-{
-
-}
-
-HNSDPCrop::~HNSDPCrop()
-{
-
-}
-
-HNSD_PSTEP_TYPE_T
-HNSDPCrop::getType()
-{
-    return HNSD_PSTEP_TYPE_TRANSFORM;
-}
-
-void 
-HNSDPCrop::initSupportedParameters( HNSDPipelineManagerInterface *capture )
-{
-    // Get access to the parameters
-    HNSDPipelineParameterMap *params = capture->getParamPtr();
-
-    // Add the parameters that apply to this transform
-    params->addParameter( getInstance(), "enable", "1", "desc" );
-    params->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0", "desc" );
-    params->addParameter( getInstance(), "result_image_index", "", "desc" );
-}
-
-bool
-HNSDPCrop::doesStepApply( HNSDPipelineManagerInterface *capture )
-{
-    return true;
-}
-
-HNSDP_RESULT_T
-HNSDPCrop::applyStep( HNSDPipelineManagerInterface *capture )
-{
-    std::cout << "HNSDPCrop::applyStep - start" << std::endl;
-
-    // Read image as grayscale
-    cv::Mat srcImage;
-    cv::Mat rotImage;
-
-    std::string inFile = capture->getLastOutputPathAndFile();
-
-    srcImage = cv::imread( inFile, cv::IMREAD_COLOR );
-
-    if ( !srcImage.data )
-    {
-        printf("No image data \n");
-        return HNSDP_RESULT_FAILURE;
-    }
-
-    // Print width and height
-    uint ih = srcImage.rows;
-    uint iw = srcImage.cols;
-    printf( "HNSDPCrop - width: %u  height: %u\n", iw, ih );
-
-    // Crop to the region of interest
-    double cropfactor[4];
-    cropfactor[0] = 0.13;
-    cropfactor[1] = 0.22;
-    cropfactor[2] = 0.0;
-    cropfactor[3] = 0.0;
-
-    uint cx1 = (uint)( (double)ih * cropfactor[0] );
-    uint cx2 = ih - (uint)( (double)ih * cropfactor[1] );
-
-    uint cy1 = (uint)( (double)iw * cropfactor[2] );
-    uint cy2 = iw - (uint)( (double)ih * cropfactor[3] );
-
-    printf( "Crop Offsets - cx1: %u, cx2: %u, cy1: %u, cy2: %u\n", cx1, cx2, cy1, cy2 );
-
-    cv::Mat cropImage = srcImage( cv::Range( cx1, cx2 ), cv::Range( cy1, cy2 ) );
-
-    std::string outFile = capture->registerNextFilename( "crop" );
-
-    if( cv::imwrite( outFile, cropImage ) == false )
-    {
-        printf("Failed to write output file\n");
-        return HNSDP_RESULT_FAILURE;
-    }
-
-    return HNSDP_RESULT_SUCCESS;
-}
-
-HNSDPipeline::HNSDPipeline()
-{
-
-}
-
-HNSDPipeline::~HNSDPipeline()
-{
-
-}
-
-IMM_RESULT_T
-HNSDPipeline::init( HNSD_PIPETYPE_T type )
-{
-    switch( type )
-    {
-        case HNSD_PIPETYPE_IMAGE_CAPTURE:
-        {
-            // Initialize the pipeline transformations.
-            HNSDPBulkRotate* bulkRotate = new HNSDPBulkRotate( "firstRotate" );
-            m_pipeline.push_back( bulkRotate );
-
-            HNSDPCrop* crop = new HNSDPCrop( "cropRaw" );
-            m_pipeline.push_back( crop );
-        }
-        break;
-
-    }
-
-    return IMM_RESULT_SUCCESS;
-}
-
-uint 
-HNSDPipeline::getStepCount()
-{
-    return m_pipeline.size();
-}
-
-HNSDPipelineStepBase*
-HNSDPipeline::getStepByIndex( uint index )
-{
-    if( index >= m_pipeline.size() )
-        return NULL;
-
-    return m_pipeline[ index ];
-}
-#endif
-
 HNSDCaptureRecord::HNSDCaptureRecord( HNSDIMRootInterface *infoIntf )
 {
     m_infoIntf = infoIntf;
@@ -390,10 +93,6 @@ HNSDCaptureRecord::HNSDCaptureRecord( HNSDIMRootInterface *infoIntf )
     m_orderIndex = 0;
 
     m_executionState = HNSDCAP_EXEC_STATE_NOTSET;
-
-    m_curStep = NULL;
-
-    m_curStepIndex = 0;
 }
 
 HNSDCaptureRecord::~HNSDCaptureRecord()
@@ -404,6 +103,12 @@ void
 HNSDCaptureRecord::setID( std::string id )
 {
     m_id = id;
+}
+
+void 
+HNSDCaptureRecord::setPipeline( HNSDPipeline *pipeline )
+{
+    m_pipeline = pipeline;
 }
 
 void
@@ -438,11 +143,12 @@ HNSDCaptureRecord::getOrderIndex()
     return m_orderIndex;
 }
 
-HNSDPipelineParameterMap*
-HNSDCaptureRecord::getParamPtr()
+HNSDPipeline* 
+HNSDCaptureRecord::getPipelinePtr()
 {
-    return &m_params;
+    return m_pipeline;
 }
+
 
 HNSDCAP_EXEC_STATE_T
 HNSDCaptureRecord::getState()
@@ -461,23 +167,8 @@ HNSDCaptureRecord::getStateAsStr()
         case HNSDCAP_EXEC_STATE_PENDING:
             return "Pending";
 
-        case HNSDCAP_EXEC_STATE_CAPTURE:
-            return "Capture";
-
-        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
-            return "CaptureWait";
-
-        case HNSDCAP_EXEC_STATE_MOVE:
-            return "Move";
-
-        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
-            return "MoveWait";
-
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
-            return "ImageProcess";
-
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
-            return "ImageProcessWait";
+        case HNSDCAP_EXEC_STATE_ACTIVE:
+            return "Active";
 
         case HNSDCAP_EXEC_STATE_COMPLETE:
             return "Complete";
@@ -550,34 +241,6 @@ HNSDCaptureRecord::getLastOutputPathAndFile()
     return m_fileList[len-1]->getPathAndFile();
 }
 
-HNSDCAP_ACTION_T
-HNSDCaptureRecord::checkNextStep()
-{
-    switch( m_executionState )
-    {
-        case HNSDCAP_EXEC_STATE_PENDING:
-        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
-        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
-            return HNSDCAP_ACTION_WAIT;
-
-        case HNSDCAP_EXEC_STATE_CAPTURE:
-            return HNSDCAP_ACTION_START_CAPTURE;
-
-        case HNSDCAP_EXEC_STATE_MOVE:
-            return HNSDCAP_ACTION_START_ADVANCE;
-
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
-            return HNSDCAP_ACTION_START_PIPELINE_STEP;
-
-        case HNSDCAP_EXEC_STATE_NOTSET:
-        case HNSDCAP_EXEC_STATE_COMPLETE:
-            break;
-    }
-
-    return HNSDCAP_ACTION_COMPLETE;
-}
-
 void 
 HNSDCaptureRecord::makePending()
 {
@@ -588,105 +251,14 @@ void
 HNSDCaptureRecord::makeActive()
 {
     if( m_executionState == HNSDCAP_EXEC_STATE_PENDING )
-        m_executionState = HNSDCAP_EXEC_STATE_CAPTURE;
+        m_executionState = HNSDCAP_EXEC_STATE_ACTIVE;
 }
 
 void
-HNSDCaptureRecord::startedAction()
+HNSDCaptureRecord::makeComplete()
 {
-    switch( m_executionState )
-    {
-        case HNSDCAP_EXEC_STATE_CAPTURE:
-            m_executionState = HNSDCAP_EXEC_STATE_CAPTURE_WAIT;
-        break;
-
-        case HNSDCAP_EXEC_STATE_MOVE:
-            m_executionState = HNSDCAP_EXEC_STATE_MOVE_WAIT;
-        break;
-
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
-            m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT;
-        break;
-
-        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
-        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
-        case HNSDCAP_EXEC_STATE_PENDING:
-        case HNSDCAP_EXEC_STATE_NOTSET:
-        case HNSDCAP_EXEC_STATE_COMPLETE:
-        break;
-    }
-
-    std::cout << "CaptureRecord - StartedAction - id: " << m_id << "  nextState: " << m_executionState << std::endl;
-}
-
-void
-HNSDCaptureRecord::completedAction()
-{
-    switch( m_executionState )
-    {
-        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
-            m_executionState = HNSDCAP_EXEC_STATE_MOVE;
-        break;
-
-        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
-            if( findNextPipelineStage() == true )
-                m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS;
-            else
-                m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
-        break;
-
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
-            m_curStep = NULL;
-            m_curStepIndex += 1;
-            if( findNextPipelineStage() == true )
-                m_executionState = HNSDCAP_EXEC_STATE_IMAGE_PROCESS;
-            else
-                m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
-        break;
-
-        case HNSDCAP_EXEC_STATE_CAPTURE:
-        case HNSDCAP_EXEC_STATE_MOVE:
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
-        case HNSDCAP_EXEC_STATE_PENDING:
-        case HNSDCAP_EXEC_STATE_NOTSET:
-        case HNSDCAP_EXEC_STATE_COMPLETE:
-        break;
-    }
-
-    std::cout << "CaptureRecord - CompletedAction - id: " << m_id << "  nextState: " << m_executionState << std::endl;
-}
-
-bool
-HNSDCaptureRecord::findNextPipelineStage()
-{
-    HNSDPipeline *pline = m_infoIntf->getPipelinePtr();
-
-    m_curStep = NULL;
-
-    while( m_curStepIndex < pline->getStepCount() )
-    {
-        HNSDPipelineStepBase *step = pline->getStepByIndex( m_curStepIndex );
-
-        if( step->doesStepApply( this ) )
-        {
-            m_curStep = step;
-            return true;
-        }
-
-        m_curStepIndex += 1;
-    }
-
-    return false;
-}
-
-void
-HNSDCaptureRecord::executeStep()
-{
-    if( m_curStep == NULL )
-        return;
-
-    m_curStep->applyStep( this );
+    if( m_executionState == HNSDCAP_EXEC_STATE_ACTIVE )
+        m_executionState = HNSDCAP_EXEC_STATE_COMPLETE;
 }
 
 HNSDImageManager::HNSDImageManager()
@@ -700,13 +272,11 @@ HNSDImageManager::~HNSDImageManager()
 }
 
 IMM_RESULT_T
-HNSDImageManager::start()
+HNSDImageManager::start( HNSDPipelineManagerIntf *pipelineMgr )
 {
     IMM_RESULT_T result = IMM_RESULT_SUCCESS;
 
-    //result = m_pipeline.init( HNSD_PIPETYPE_IMAGE_CAPTURE );
-    //if( result != IMM_RESULT_SUCCESS )
-    //    return result;
+    m_pipelineMgr = pipelineMgr;
 
     return result;
 }
@@ -737,6 +307,11 @@ HNSDImageManager::createCaptures( uint count, bool postAdvance )
 
     newCapRec->generateNewID( timestamp, m_nextOrderIndex );
     m_nextOrderIndex += 1;
+
+    HNSDPipeline *pipeline;
+    m_pipelineMgr->allocatePipeline( HNSDP_TYPE_IMAGE_CAPTURE, newCapRec, &pipeline );
+
+    newCapRec->setPipeline( pipeline );
 
     newCapRec->makePending();
 
@@ -898,10 +473,4 @@ HNSDImageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, 
         return IMM_RESULT_FAILURE;
 
     return it->second->getFilePath( fileIndex, rstPath );
-}
-
-HNSDPipeline* 
-HNSDImageManager::getPipelinePtr()
-{
-    return &m_pipeline;
 }

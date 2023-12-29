@@ -160,23 +160,25 @@ class HNSDHardwareControl : public CameraEventInf
         //void requestComplete( libcamera::Request *request );
 };
 
-class HNSDPSHardwareCapture : public HNSDPipelineStepBase
+class HNSDPSHardwareSingleCapture : public HNSDPipelineStepBase
 {
     public:
-        HNSDPSHardwareCapture( std::string instance );
-       ~HNSDPSHardwareCapture();
+        HNSDPSHardwareSingleCapture( std::string instance );
+       ~HNSDPSHardwareSingleCapture();
 
     private:
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
 
-        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T applyStep( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
+
+        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
 };
 
 class HNSDPSHardwareMove : public HNSDPipelineStepBase
@@ -189,13 +191,15 @@ class HNSDPSHardwareMove : public HNSDPipelineStepBase
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineManagerInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
 
-        virtual bool doesStepApply( HNSDPipelineManagerInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T applyStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T applyStep( HNSDPipelineClientInterface *capture );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineManagerInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
+
+        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
 };
 
 #endif // __HNSD_HARDWARE_CONTROL_H__

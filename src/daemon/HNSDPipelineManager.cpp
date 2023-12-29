@@ -28,20 +28,20 @@ HNSDPipelineManager::~HNSDPipelineManager()
 }
 
 HNSDP_RESULT_T
-HNSDPipelineManager::allocatePipeline( HNSDP_TYPE_T type, HNSDPipeline **rtnPipeline )
+HNSDPipelineManager::allocatePipeline( HNSDP_TYPE_T type, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline )
 {
     HNSDPipeline* newPipe = new HNSDPipeline;
 
     *rtnPipeline = NULL;
 
-    newPipe->init( type );
+    newPipe->init( type, clientInf );
 
     switch( type )
     {
         case HNSDP_TYPE_IMAGE_CAPTURE:
         {
             // Initialize the pipeline with the appropriate steps.
-            HNSDPSHardwareCapture* hwCapture = new HNSDPSHardwareCapture( "imageCapture" );
+            HNSDPSHardwareSingleCapture* hwCapture = new HNSDPSHardwareSingleCapture( "imageCapture" );
             newPipe->addStep( hwCapture );
 
             HNSDPSHardwareMove* hwMove = new HNSDPSHardwareMove( "slideAdvance" );
@@ -58,6 +58,14 @@ HNSDPipelineManager::allocatePipeline( HNSDP_TYPE_T type, HNSDPipeline **rtnPipe
 
     *rtnPipeline = newPipe;
 
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T 
+HNSDPipelineManager::submitPipelineForExecution( HNSDPipeline *pipeline )
+{
+    m_pendingQueue.push_back( pipeline );
+    pipeline->waitingForExecution();
     return HNSDP_RESULT_SUCCESS;
 }
 
