@@ -1,13 +1,7 @@
 #ifndef __HNSD_IMAGE_MANAGER_H__
 #define __HNSD_IMAGE_MANAGER_H__
 
-#include <any>
-#include <map>
-#include <mutex>
 #include <string>
-#include <memory>
-
-#include <hnode2/HNReqWaitQueue.h>
 
 #include "HNSDPipeline.h"
 
@@ -119,10 +113,6 @@ class HNSDCaptureRecord : public HNSDPipelineClientInterface
         std::vector< HNSDCaptureFile* > m_fileList;
 
         HNSDCAP_EXEC_STATE_T m_executionState;
-
-        //HNSDPipelineStepBase *m_curStep;
-
-        //uint m_curStepIndex;
 };
 
 class HNSDImageManager : public HNSDIMRootInterface
@@ -143,8 +133,6 @@ class HNSDImageManager : public HNSDIMRootInterface
         std::string getCaptureListJSON();
 
         std::string getCaptureJSON( std::string capID );
-
-        HNSDCaptureRecord *getNextPendingCapture();
 
         IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
 

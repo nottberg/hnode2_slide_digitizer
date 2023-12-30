@@ -1,14 +1,10 @@
-#include <sys/mman.h>
 #include <sys/time.h>
 
 #include <iostream>
-#include <sstream>
 
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 #include <Poco/StreamCopier.h>
-
-#include <opencv2/opencv.hpp>
 
 #include "HNSDImageManager.h"
 
@@ -313,9 +309,9 @@ HNSDImageManager::createCaptures( uint count, bool postAdvance )
 
     newCapRec->setPipeline( pipeline );
 
-    newCapRec->makePending();
-
     m_captureRecordMap.insert( std::pair< std::string, HNSDCaptureRecord* >( newCapRec->getID(), newCapRec ) );
+
+    m_pipelineMgr->submitPipelineForExecution( pipeline );
 
     return IMM_RESULT_SUCCESS;
 }
@@ -441,25 +437,6 @@ HNSDImageManager::getCaptureJSON( std::string capID )
     }
 
     return ostr.str();
-}
-
-HNSDCaptureRecord*
-HNSDImageManager::getNextPendingCapture()
-{
-    HNSDCaptureRecord *nextCap = NULL;
-
-    for( std::map< std::string, HNSDCaptureRecord* >::iterator it = m_captureRecordMap.begin(); it != m_captureRecordMap.end(); it++ )
-    {
-        if( it->second->isPending() == false )
-            continue;
-
-        if( nextCap == NULL )
-            nextCap = it->second;
-        else if( it->second->getOrderIndex() < nextCap->getOrderIndex() )
-            nextCap = it->second;
-    }
-
-    return nextCap;
 }
 
 IMM_RESULT_T

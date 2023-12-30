@@ -1,11 +1,7 @@
 #ifndef __HNSD_IMAGE_TRANSFORM_H__
 #define __HNSD_IMAGE_TRANSFORM_H__
 
-#include <any>
-#include <map>
-#include <mutex>
 #include <string>
-#include <memory>
 
 #include "HNSDPipeline.h"
 

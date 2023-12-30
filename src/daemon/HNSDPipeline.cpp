@@ -1,18 +1,6 @@
-#include <sys/mman.h>
-#include <sys/time.h>
-
 #include <iostream>
-#include <sstream>
-
-#include <Poco/JSON/Object.h>
-#include <Poco/JSON/Parser.h>
-#include <Poco/StreamCopier.h>
-
 
 #include "HNSDPipeline.h"
-#include "HNSDPipelineManager.h"
-
-namespace pjs = Poco::JSON;
 
 HNSDPipelineParameter::HNSDPipelineParameter()
 {

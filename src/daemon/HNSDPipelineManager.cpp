@@ -1,12 +1,4 @@
-#include <sys/mman.h>
-#include <sys/time.h>
-
-#include <iostream>
-#include <sstream>
-
-#include <Poco/JSON/Object.h>
-#include <Poco/JSON/Parser.h>
-#include <Poco/StreamCopier.h>
+#include <vector>
 
 #include "HNSDPipeline.h"
 
@@ -14,8 +6,6 @@
 #include "HNSDHardwareControl.h"
 
 #include "HNSDPipelineManager.h"
-
-namespace pjs = Poco::JSON;
 
 HNSDPipelineManager::HNSDPipelineManager()
 {
@@ -67,6 +57,20 @@ HNSDPipelineManager::submitPipelineForExecution( HNSDPipeline *pipeline )
     m_pendingQueue.push_back( pipeline );
     pipeline->waitingForExecution();
     return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDPipeline* 
+HNSDPipelineManager::getNextPendingPipeline()
+{
+    HNSDPipeline *rtnPipeline;
+
+    if( m_pendingQueue.empty() == true )
+        return NULL;
+
+    rtnPipeline = m_pendingQueue.front();
+    m_pendingQueue.pop_front();
+
+    return rtnPipeline;
 }
 
 void

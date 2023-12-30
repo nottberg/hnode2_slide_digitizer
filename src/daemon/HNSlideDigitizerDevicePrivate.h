@@ -106,14 +106,8 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
 
         HNSDPipelineManager m_pipelineMgr;
 
-        HNSDCaptureRecord     *m_curCapture;
         HNSDPipeline          *m_activePipeline;        
         HNSDHardwareOperation *m_activeHWOp;
-
-
-
-        //uint m_nextOpID;
-        //std::map< std::string, HNSDHardwareOperation* > m_opMap;
 
         // Format string codes
         uint m_errStrCode;

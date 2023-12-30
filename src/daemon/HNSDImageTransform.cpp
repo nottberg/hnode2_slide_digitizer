@@ -1,18 +1,8 @@
-#include <sys/mman.h>
-#include <sys/time.h>
-
 #include <iostream>
-#include <sstream>
-
-#include <Poco/JSON/Object.h>
-#include <Poco/JSON/Parser.h>
-#include <Poco/StreamCopier.h>
 
 #include <opencv2/opencv.hpp>
 
 #include "HNSDImageTransform.h"
-
-namespace pjs = Poco::JSON;
 
 HNSDPSOrthogonalRotate::HNSDPSOrthogonalRotate( std::string instance )
 : HNSDPipelineStepBase( instance )

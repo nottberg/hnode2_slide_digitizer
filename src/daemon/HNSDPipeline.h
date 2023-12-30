@@ -1,13 +1,9 @@
 #ifndef __HNSD_PIPELINE_H__
 #define __HNSD_PIPELINE_H__
 
-#include <any>
+#include <vector>
 #include <map>
-#include <mutex>
 #include <string>
-#include <memory>
-
-#include <hnode2/HNReqWaitQueue.h>
 
 typedef enum HNSDPipelineResultEnum
 {
