@@ -32,7 +32,8 @@ typedef enum HNSDPipelineActionEnum
     HNSDP_ACTION_HW_SPLIT_STEP,
     HNSDP_ACTION_SPLIT_STEP,
     HNSDP_ACTION_INLINE,
-    HNSDP_ACTION_COMPLETE
+    HNSDP_ACTION_COMPLETE,
+    HNSDP_ACTION_FAILURE
 }HNSDP_ACTION_T;
 
 typedef enum HNSDPipelineExecutionStateEnum
@@ -42,6 +43,8 @@ typedef enum HNSDPipelineExecutionStateEnum
     HNSDP_EXEC_STATE_READY,
     HNSDP_EXEC_STATE_RUNNING_STEP_START,
     HNSDP_EXEC_STATE_RUNNING_STEP_WAIT,
+    HNSDP_EXEC_STATE_RUNNING_STEP_COMPLETE,
+    HNSDP_EXEC_STATE_INITIATE_NEXT_STEP,    
     HNSDP_EXEC_STATE_COMPLETED
 }HNSDP_EXEC_STATE_T;
 
@@ -123,6 +126,8 @@ class HNSDPipelineStepBase
 
         virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
 
+        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+ 
         virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture ) = 0;
 
     private:
@@ -142,6 +147,8 @@ class HNSDPipeline
 
         void addParameter( std::string instance, std::string name, std::string defaultValue, std::string description );
 
+        std::string getExecutionStateAsStr();
+
         uint getStepCount();
 
         HNSDPipelineStepBase* getStepByIndex( uint index );
@@ -160,13 +167,15 @@ class HNSDPipeline
 
         HNSDP_ACTION_T checkForStepAction();
 
-        void executeInlineStep();
+        HNSDP_RESULT_T executeInlineStep();
 
         HNSDP_RESULT_T createHardwareOperation( HNSDHardwareOperation **rtnPtr );
         
-        void hardwareOperationCompleted( HNSDHardwareOperation *opPtr );
+        HNSDP_RESULT_T completedHardwareOperation( HNSDHardwareOperation **opPtr );
 
     private:
+
+        void setExecutionState( HNSDP_EXEC_STATE_T newState );
 
         HNSDPipelineClientInterface *m_clientInf;
 

@@ -104,12 +104,18 @@ HNSDPipelineStepBase::createHardwareOperation( HNSDPipelineClientInterface *capt
     return HNSDP_RESULT_NOT_IMPLEMENTED;
 }
 
+HNSDP_RESULT_T 
+HNSDPipelineStepBase::completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+{
+    return HNSDP_RESULT_NOT_IMPLEMENTED;
+}
+
 HNSDPipeline::HNSDPipeline()
 {
     m_activeStepIndex = 0;
     m_activeStep = NULL;
 
-    m_execState = HNSDP_EXEC_STATE_NOTSET;
+    setExecutionState( HNSDP_EXEC_STATE_NOTSET );
 }
 
 HNSDPipeline::~HNSDPipeline()
@@ -153,9 +159,53 @@ HNSDPipeline::getStepByIndex( uint index )
 }
 
 void
+HNSDPipeline::setExecutionState( HNSDP_EXEC_STATE_T newState )
+{
+    // If change to same state then exit
+    if( newState == m_execState )
+        return;
+
+    m_execState = newState;
+
+    if( newState != HNSDP_EXEC_STATE_NOTSET )
+    {
+        std::cout << "=== HNSDPipeline - State Change - newState: " << getExecutionStateAsStr();
+        std::cout << ",  stepIndex: " << m_activeStepIndex;
+        std::cout << ",  stepInstance: " << ((m_activeStep != NULL) ? m_activeStep->getInstance() : "");
+        std::cout << " ===" << std::endl;
+    }
+}
+
+std::string
+HNSDPipeline::getExecutionStateAsStr()
+{
+    switch( m_execState )
+    {
+        case HNSDP_EXEC_STATE_NOTSET:
+            return "NotSet";
+        case HNSDP_EXEC_STATE_PENDING:
+            return "Pending";
+        case HNSDP_EXEC_STATE_READY:
+            return "Ready";
+        case HNSDP_EXEC_STATE_RUNNING_STEP_START:
+            return "StepStart";
+        case HNSDP_EXEC_STATE_RUNNING_STEP_WAIT:
+            return "StepWait";
+        case HNSDP_EXEC_STATE_RUNNING_STEP_COMPLETE:
+            return "StepComplete";
+        case HNSDP_EXEC_STATE_INITIATE_NEXT_STEP:
+            return "InitiateNextStep";
+        case HNSDP_EXEC_STATE_COMPLETED:
+            return "Completed";
+    }
+
+    return "Unknown";
+}
+
+void
 HNSDPipeline::waitingForExecution()
 {
-    m_execState = HNSDP_EXEC_STATE_PENDING;
+    setExecutionState( HNSDP_EXEC_STATE_PENDING );
 
     m_clientInf->makePending();
 }
@@ -166,7 +216,7 @@ HNSDPipeline::prepareForExecution()
     m_activeStepIndex = 0;
     m_activeStep = NULL;
 
-    m_execState = HNSDP_EXEC_STATE_READY;
+    setExecutionState( HNSDP_EXEC_STATE_READY );
 
     m_clientInf->makeActive();
 }
@@ -177,7 +227,7 @@ HNSDPipeline::finishExecution()
     m_activeStepIndex = 0;
     m_activeStep = NULL;
 
-    m_execState = HNSDP_EXEC_STATE_COMPLETED;
+    setExecutionState( HNSDP_EXEC_STATE_COMPLETED );
 
     m_clientInf->makeComplete();
 }
@@ -199,7 +249,7 @@ HNSDPipeline::initiateNextStep()
         m_activeStepIndex += 1;
     }
 
-    m_execState = HNSDP_EXEC_STATE_COMPLETED;
+    setExecutionState( HNSDP_EXEC_STATE_COMPLETED );
 
     return HNSDP_RESULT_PIPELINE_COMPLETE;
 }
@@ -207,58 +257,109 @@ HNSDPipeline::initiateNextStep()
 void
 HNSDPipeline::startedStep()
 {
-
+    setExecutionState( HNSDP_EXEC_STATE_RUNNING_STEP_WAIT );
 }
 
 void
 HNSDPipeline::completedStep()
 {
-
+    setExecutionState( HNSDP_EXEC_STATE_RUNNING_STEP_COMPLETE );
 }
 
 HNSDP_ACTION_T
 HNSDPipeline::checkForStepAction()
 {
-#if 0
-    switch( m_executionState )
+    if( m_execState == HNSDP_EXEC_STATE_READY )
     {
-        case HNSDCAP_EXEC_STATE_PENDING:
-        case HNSDCAP_EXEC_STATE_CAPTURE_WAIT:
-        case HNSDCAP_EXEC_STATE_MOVE_WAIT:
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS_WAIT:
-            return HNSDCAP_ACTION_WAIT;
-
-        case HNSDCAP_EXEC_STATE_CAPTURE:
-            return HNSDCAP_ACTION_START_CAPTURE;
-
-        case HNSDCAP_EXEC_STATE_MOVE:
-            return HNSDCAP_ACTION_START_ADVANCE;
-
-        case HNSDCAP_EXEC_STATE_IMAGE_PROCESS:
-            return HNSDCAP_ACTION_START_PIPELINE_STEP;
-
-        case HNSDCAP_EXEC_STATE_NOTSET:
-        case HNSDCAP_EXEC_STATE_COMPLETE:
+        switch( initiateNextStep() )
+        {
+            case HNSDP_RESULT_SUCCESS:
+                setExecutionState( HNSDP_EXEC_STATE_RUNNING_STEP_START );
             break;
+
+            case HNSDP_RESULT_PIPELINE_COMPLETE:
+                return HNSDP_ACTION_COMPLETE;
+            break;
+
+            case HNSDP_RESULT_FAILURE:
+                return HNSDP_ACTION_FAILURE;
+            break;
+        }
     }
-#endif
-    return HNSDP_ACTION_COMPLETE;
+
+    if( m_execState == HNSDP_EXEC_STATE_RUNNING_STEP_START )
+    {
+        switch( m_activeStep->getType() )
+        {
+            case HNSD_PSTEP_TYPE_SPLIT_STEP:
+                return HNSDP_ACTION_SPLIT_STEP;
+            break;
+
+            case HNSD_PSTEP_TYPE_HW_SPLIT_STEP:
+                return HNSDP_ACTION_HW_SPLIT_STEP;
+            break;
+
+            case HNSD_PSTEP_TYPE_INLINE:
+                return HNSDP_ACTION_INLINE;
+            break;
+        }
+    }
+
+    if( m_execState == HNSDP_EXEC_STATE_RUNNING_STEP_COMPLETE )
+    {
+        m_activeStep = NULL;
+        m_activeStepIndex += 1;
+        setExecutionState( HNSDP_EXEC_STATE_INITIATE_NEXT_STEP );
+    }
+
+    if( m_execState == HNSDP_EXEC_STATE_INITIATE_NEXT_STEP )
+    {
+        switch( initiateNextStep() )
+        {
+            case HNSDP_RESULT_SUCCESS:
+                setExecutionState( HNSDP_EXEC_STATE_RUNNING_STEP_START );
+            break;
+
+            case HNSDP_RESULT_PIPELINE_COMPLETE:
+                return HNSDP_ACTION_COMPLETE;
+            break;
+
+            case HNSDP_RESULT_FAILURE:
+                return HNSDP_ACTION_FAILURE;
+            break;
+        }
+    }
+
+    return HNSDP_ACTION_WAIT;
 }
 
-void
+HNSDP_RESULT_T
 HNSDPipeline::executeInlineStep()
 {
     std::cout << "HNSDPipeline::executeInlineStep - start" << std::endl;
+
+    if( m_activeStep == NULL )
+        return HNSDP_RESULT_FAILURE;
+
+    return m_activeStep->executeInline( m_clientInf );
 }
 
 HNSDP_RESULT_T
 HNSDPipeline::createHardwareOperation( HNSDHardwareOperation **rtnPtr )
 {
-    return HNSDP_RESULT_SUCCESS;
+    if( m_activeStep == NULL )
+        return HNSDP_RESULT_FAILURE;
+
+    return m_activeStep->createHardwareOperation( m_clientInf, rtnPtr );
 }
 
-void
-HNSDPipeline::hardwareOperationCompleted( HNSDHardwareOperation *opPtr )
+HNSDP_RESULT_T
+HNSDPipeline::completedHardwareOperation( HNSDHardwareOperation **opPtr )
 {
-    std::cout << "HNSDPipeline::hardwareOperationCompleted - start" << std::endl;
+    std::cout << "HNSDPipeline::completedHardwareOperation - start" << std::endl;
+
+    if( m_activeStep == NULL )
+        return HNSDP_RESULT_FAILURE;
+
+    return m_activeStep->completedHardwareOperation( m_clientInf, opPtr );
 }

@@ -227,7 +227,7 @@ HNSDHardwareControl::updateOperationState( HNSD_HWSTATE_T newState )
 
 	if( m_opState != newState )
 	{
-		std::cout << "HNSDHardwareControl::updateOperationState - newState: " << newState << std::endl;
+		//std::cout << "HNSDHardwareControl::updateOperationState - newState: " << newState << std::endl;
 		m_opState = newState;
 
 		// Notify upper layer of state change
@@ -305,7 +305,7 @@ HNSDHardwareControl::runCapture()
 			// for finished autofocus.
 			case HNSD_HWSTATE_CAPTURE_FOCUS_WAIT:
 			{
-			    std::cout << "Queueing polling request" << std::endl;
+			    //std::cout << "Queueing polling request" << std::endl;
 
 				updateOperationState( HNSD_HWSTATE_CAPTURE_WAIT_REQ );
 
@@ -341,7 +341,7 @@ HNSDHardwareControl::runCapture()
 		// If we are waiting then delay a bit.
 		if( curState == HNSD_HWSTATE_CAPTURE_WAIT_REQ )
 		{
-			std::cout << "===== Waiting =====" << std::endl;
+			//std::cout << "===== Waiting =====" << std::endl;
 			sleep(2);
 		}
 
@@ -377,7 +377,7 @@ HNSDHardwareControl::runCapture()
 void
 HNSDHardwareControl::requestEvent( CR_EVTYPE_T event )
 {
-    std::cout << "HWCtrl::requestEvent - event: " << event << std::endl;
+    //std::cout << "HWCtrl::requestEvent - event: " << event << std::endl;
 
 	if( getOperationState() != HNSD_HWSTATE_CAPTURE_WAIT_REQ )
 	{
@@ -401,7 +401,7 @@ HNSDHardwareControl::requestEvent( CR_EVTYPE_T event )
         break;
     }
 
-	std::cout << "HWCTRL::requestEvent - capState: " << getOperationState() << std::endl;
+	//std::cout << "HWCTRL::requestEvent - capState: " << getOperationState() << std::endl;
 }
 
 void 
@@ -549,6 +549,17 @@ HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineClientInterfac
 	return HNSDP_RESULT_SUCCESS;
 }
 
+HNSDP_RESULT_T
+HNSDPSHardwareSingleCapture::completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **opPtr )
+{
+    std::cout << "HNSDPSHardwareSingleCapture::completedHardwareOperation() - Cleanup" << std::endl;
+
+	delete *opPtr;
+	*opPtr = NULL;
+
+	return HNSDP_RESULT_SUCCESS;
+}
+
 HNSDPSHardwareMove::HNSDPSHardwareMove( std::string instance )
 : HNSDPipelineStepBase( instance )
 {
@@ -611,6 +622,17 @@ HNSDPSHardwareMove::createHardwareOperation( HNSDPipelineClientInterface *captur
     opPtr->setMoveParameters( HNHW_MDIR_FORWARD, 1 );
 
 	*rtnPtr = opPtr;
+
+	return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPSHardwareMove::completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **opPtr )
+{
+    std::cout << "HNSDPSHardwareMove::completedHardwareOperation() - Cleanup" << std::endl;
+
+	delete *opPtr;
+	*opPtr = NULL;
 
 	return HNSDP_RESULT_SUCCESS;
 }

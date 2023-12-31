@@ -179,6 +179,8 @@ class HNSDPSHardwareSingleCapture : public HNSDPipelineStepBase
         virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
 
         virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+
+        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
 };
 
 class HNSDPSHardwareMove : public HNSDPipelineStepBase
@@ -200,6 +202,8 @@ class HNSDPSHardwareMove : public HNSDPipelineStepBase
         virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
 
         virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+
+        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
 };
 
 #endif // __HNSD_HARDWARE_CONTROL_H__

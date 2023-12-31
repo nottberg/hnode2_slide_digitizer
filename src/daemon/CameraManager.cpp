@@ -593,7 +593,7 @@ Camera::queueRequest()
 void
 Camera::requestComplete( libcamera::Request *request )
 {
-    std::cout << "requestComplete - status: " << request->status() << std::endl;
+    //std::cout << "requestComplete - status: " << request->status() << std::endl;
 
     if( m_eventCB == NULL )
         return;
@@ -613,7 +613,7 @@ Camera::requestComplete( libcamera::Request *request )
 	switch( af_state )
     {
         case libcamera::controls::AfStateScanning:
-        	std::cout << "requestComplete - autofocus scanning" << std::endl;
+        	//std::cout << "requestComplete - autofocus scanning" << std::endl;
             m_eventCB->requestEvent( CR_EVTYPE_REQ_FOCUSING );
         break;
 

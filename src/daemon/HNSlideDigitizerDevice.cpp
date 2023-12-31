@@ -390,8 +390,6 @@ HNSlideDigitizerDevice::loopIteration()
         // Check if any new captures are ready to execute
         m_activePipeline = m_pipelineMgr.getNextPendingPipeline();
 
-        std::cout << "HNManagementDevice::loopIteration() - getNextPending: " << m_activePipeline << std::endl;
-
         // Signal that it has become active
         if( m_activePipeline != NULL )
         {
@@ -408,8 +406,6 @@ HNSlideDigitizerDevice::loopIteration()
   
         nextAction = m_activePipeline->checkForStepAction();
 
-        std::cout << "HNManagementDevice::loopIteration() - Capture - Next Step: " << nextAction << std::endl;
-
         switch( nextAction )
         {
             case HNSDP_ACTION_WAIT:
@@ -417,7 +413,7 @@ HNSlideDigitizerDevice::loopIteration()
 
             case HNSDP_ACTION_COMPLETE:
             {
-                std::cout << "Pipeline complete" << std::endl;
+                std::cout << "HNManagementDevice::loopIteration() - Pipeline complete" << std::endl;
                 m_activePipeline->finishExecution();
                 m_activePipeline = NULL;
             }
@@ -425,6 +421,8 @@ HNSlideDigitizerDevice::loopIteration()
 
             case HNSDP_ACTION_HW_SPLIT_STEP:
             {
+                std::cout << "HNManagementDevice::loopIteration() - HW_SPLIT_STEP" << std::endl;
+
                 // Create the hardware operation for the step
                 m_activePipeline->createHardwareOperation( &m_activeHWOp );
 
@@ -438,13 +436,13 @@ HNSlideDigitizerDevice::loopIteration()
 
             case HNSDP_ACTION_SPLIT_STEP:
             {
-
+                std::cout << "HNManagementDevice::loopIteration() - SPLIT_STEP" << std::endl;
             }
             break;
 
             case HNSDP_ACTION_INLINE:
             {
-                std::cout << "HNManagementDevice::loopIteration() - Start pipeline step" << std::endl;
+                std::cout << "HNManagementDevice::loopIteration() - INLINE" << std::endl;
 
                 m_activePipeline->startedStep();
 
@@ -466,7 +464,7 @@ HNSlideDigitizerDevice::timeoutEvent()
 void
 HNSlideDigitizerDevice::fdEvent( int sfd )
 {
-    std::cout << "HNManagementDevice::fdEvent() - entry: " << sfd << std::endl;
+    //std::cout << "HNManagementDevice::fdEvent() - entry: " << sfd << std::endl;
 
     if( m_configUpdateTrigger.isMatch( sfd ) )
     {
@@ -480,7 +478,7 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
 
         m_hardwareNotifyTrigger.reset();
 
-        std::cout << "=== HW notify state change - state: " << opState << std::endl;
+        //std::cout << "=== HW notify state change - state: " << opState << std::endl;
         switch( opState )
         {
             case HNSD_HWSTATE_NOTSET:
@@ -507,14 +505,16 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
 
             case HNSD_HWSTATE_OPERATION_COMPLETE:
                 m_hardwareCtrl.finishOperation();
-                m_activePipeline->hardwareOperationCompleted( m_activeHWOp );
+                m_activePipeline->completedHardwareOperation( &m_activeHWOp );
                 m_activeHWOp = NULL;
+                m_activePipeline->completedStep();
             break;
 
             case HNSD_HWSTATE_OPERATION_FAILURE:
                 m_hardwareCtrl.finishOperation();
-                m_activePipeline->hardwareOperationCompleted( m_activeHWOp );
+                m_activePipeline->completedHardwareOperation( &m_activeHWOp );
                 m_activeHWOp = NULL;
+                m_activePipeline->completedStep();
             break;
         }
         
