@@ -4,8 +4,8 @@
 
 #include "HNSDImageTransform.h"
 
-HNSDPSOrthogonalRotate::HNSDPSOrthogonalRotate( std::string instance )
-: HNSDPipelineStepBase( instance )
+HNSDPSOrthogonalRotate::HNSDPSOrthogonalRotate( std::string instance, std::string ownerID )
+: HNSDPipelineStepBase( instance, ownerID )
 {
 
 }
@@ -22,35 +22,40 @@ HNSDPSOrthogonalRotate::getType()
 }
 
 void 
-HNSDPSOrthogonalRotate::initSupportedParameters( HNSDPipelineClientInterface *capture )
+HNSDPSOrthogonalRotate::initSupportedParameters( HNSDPipelineParameterMap *paramMap )
 {
-    // Get access to the parameters
-    HNSDPipeline *pipeline = capture->getPipelinePtr();
-
     // Add the parameters that apply to this transform
-    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
-    pipeline->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
+    paramMap->addParameter( getInstance(), "enable", "1", "desc" );
+    paramMap->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    paramMap->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSOrthogonalRotate::doesStepApply( HNSDPipelineClientInterface *capture )
+HNSDPSOrthogonalRotate::doesStepApply( HNSDPipelineParameterMap *paramMap )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSOrthogonalRotate::executeInline( HNSDPipelineClientInterface *capture )
+HNSDPSOrthogonalRotate::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
-    std::cout << "HNSDPSOrthogonalRotate::executeInline - start" << std::endl;
-
-    // Read image as grayscale
+	std::string prevOwnerID;
+    std::string prevInstanceID;
+    HNSDStorageFile *filePtr;
     cv::Mat srcImage;
     cv::Mat rotImage;
 
-    std::string inFile = capture->getLastOutputPathAndFile();
+    std::cout << "HNSDPSOrthogonalRotate::executeInline - start" << std::endl;
 
-    srcImage = cv::imread( inFile, cv::IMREAD_COLOR );
+    // Find the output file from previous stage.
+    if( paramMap->getPreviousOutputID( prevOwnerID, prevInstanceID ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    if( storageMgr->findFile( prevOwnerID, prevInstanceID, "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    // Read image
+    srcImage = cv::imread( filePtr->getPathAndFile(), cv::IMREAD_COLOR );
 
     if ( !srcImage.data )
     {
@@ -65,27 +70,31 @@ HNSDPSOrthogonalRotate::executeInline( HNSDPipelineClientInterface *capture )
 
     cv::rotate( srcImage, rotImage, cv::ROTATE_90_COUNTERCLOCKWISE );
 
-    std::string outFile = capture->registerNextFilename( "bulkRotate" );
 
-    if( cv::imwrite( outFile, rotImage ) == false )
+	if( storageMgr->allocateNewFile( getOwnerID(), getInstance(), "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+		return HNSDP_RESULT_FAILURE;
+
+    if( cv::imwrite( filePtr->getPathAndFile(), rotImage ) == false )
     {
         printf("Failed to write output file\n");
         return HNSDP_RESULT_FAILURE;
     }
 
+    paramMap->updatePreviousOutputID( getOwnerID(), getInstance() );
+
     return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDP_RESULT_T
-HNSDPSOrthogonalRotate::completeStep( HNSDPipelineClientInterface *capture )
+HNSDPSOrthogonalRotate::completeStep( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
     std::cout << "HNSDPSOrthogonalRotate::completeStep - start" << std::endl;
 
     return HNSDP_RESULT_SUCCESS;
 }
 
-HNSDPSCrop::HNSDPSCrop( std::string instance )
-: HNSDPipelineStepBase( instance )
+HNSDPSCrop::HNSDPSCrop( std::string instance, std::string ownerID )
+: HNSDPipelineStepBase( instance, ownerID )
 {
 
 }
@@ -102,35 +111,40 @@ HNSDPSCrop::getType()
 }
 
 void 
-HNSDPSCrop::initSupportedParameters( HNSDPipelineClientInterface *capture )
+HNSDPSCrop::initSupportedParameters( HNSDPipelineParameterMap *paramMap )
 {
-    // Get access to the parameters
-    HNSDPipeline *pipeline = capture->getPipelinePtr();
-
     // Add the parameters that apply to this transform
-    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
-    pipeline->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0", "desc" );
-    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
+    paramMap->addParameter( getInstance(), "enable", "1", "desc" );
+    paramMap->addParameter( getInstance(), "crop_factors", "0.13, 0.22, 0.0, 0.0", "desc" );
+    paramMap->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSCrop::doesStepApply( HNSDPipelineClientInterface *capture )
+HNSDPSCrop::doesStepApply( HNSDPipelineParameterMap *paramMap )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSCrop::executeInline( HNSDPipelineClientInterface *capture )
+HNSDPSCrop::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
-    std::cout << "HNSDPSCrop::executeInline - start" << std::endl;
-
-    // Read image as grayscale
+	std::string prevOwnerID;
+    std::string prevInstanceID;
+    HNSDStorageFile *filePtr;
     cv::Mat srcImage;
     cv::Mat rotImage;
 
-    std::string inFile = capture->getLastOutputPathAndFile();
+    std::cout << "HNSDPSCrop::executeInline - start" << std::endl;
 
-    srcImage = cv::imread( inFile, cv::IMREAD_COLOR );
+    // Find the output file from previous stage.
+    if( paramMap->getPreviousOutputID( prevOwnerID, prevInstanceID ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    if( storageMgr->findFile( prevOwnerID, prevInstanceID, "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    // Read image
+    srcImage = cv::imread( filePtr->getPathAndFile(), cv::IMREAD_COLOR );
 
     if ( !srcImage.data )
     {
@@ -160,19 +174,22 @@ HNSDPSCrop::executeInline( HNSDPipelineClientInterface *capture )
 
     cv::Mat cropImage = srcImage( cv::Range( cx1, cx2 ), cv::Range( cy1, cy2 ) );
 
-    std::string outFile = capture->registerNextFilename( "crop" );
+	if( storageMgr->allocateNewFile( getOwnerID(), getInstance(), "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+		return HNSDP_RESULT_FAILURE;
 
-    if( cv::imwrite( outFile, cropImage ) == false )
+    if( cv::imwrite( filePtr->getPathAndFile(), cropImage ) == false )
     {
         printf("Failed to write output file\n");
         return HNSDP_RESULT_FAILURE;
     }
 
+    paramMap->updatePreviousOutputID( getOwnerID(), getInstance() );
+
     return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDP_RESULT_T
-HNSDPSCrop::completeStep( HNSDPipelineClientInterface *capture )
+HNSDPSCrop::completeStep( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
     std::cout << "HNSDPSCrop::completeStep - start" << std::endl;
 

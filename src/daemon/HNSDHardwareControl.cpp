@@ -472,8 +472,8 @@ HNSDHardwareControl::runCarouselMove()
 
 }
 
-HNSDPSHardwareSingleCapture::HNSDPSHardwareSingleCapture( std::string instance )
-: HNSDPipelineStepBase( instance )
+HNSDPSHardwareSingleCapture::HNSDPSHardwareSingleCapture( std::string instance, std::string ownerID )
+: HNSDPipelineStepBase( instance, ownerID )
 {
 
 }
@@ -490,41 +490,22 @@ HNSDPSHardwareSingleCapture::getType()
 }
 
 void 
-HNSDPSHardwareSingleCapture::initSupportedParameters( HNSDPipelineClientInterface *capture )
+HNSDPSHardwareSingleCapture::initSupportedParameters( HNSDPipelineParameterMap *paramMap )
 {
-    // Get access to the parameters
-    HNSDPipeline *pipeline = capture->getPipelinePtr();
-
     // Add the parameters that apply to this transform
-    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
-    pipeline->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
+    paramMap->addParameter( getInstance(), "enable", "1", "desc" );
+    paramMap->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    paramMap->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSHardwareSingleCapture::doesStepApply( HNSDPipelineClientInterface *capture )
+HNSDPSHardwareSingleCapture::doesStepApply( HNSDPipelineParameterMap *paramMap )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareSingleCapture::applyStep( HNSDPipelineClientInterface *capture )
-{
-    std::cout << "HNSDPSHardwareSingleCapture::applyStep - start" << std::endl;
-
-    std::string outFile = capture->registerNextFilename( "imageCapture" );
-
-    //if( cv::imwrite( outFile, rotImage ) == false )
-    //{
-    //    printf("Failed to write output file\n");
-    //    return HNSDP_RESULT_FAILURE;
-    //}
-
-    return HNSDP_RESULT_SUCCESS;
-}
-
-HNSDP_RESULT_T
-HNSDPSHardwareSingleCapture::completeStep( HNSDPipelineClientInterface *capture )
+HNSDPSHardwareSingleCapture::completeStep( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr )
 {
     std::cout << "HNSDPSHardwareSingleCapture::completeStep - start" << std::endl;
 
@@ -532,9 +513,15 @@ HNSDPSHardwareSingleCapture::completeStep( HNSDPipelineClientInterface *capture 
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **rtnPtr )
 {
     std::cout << "HNSDPSHardwareSingleCapture::createHardwareOperation() - Start hardware capture" << std::endl;
+
+	// Allocate a new storage file for the capture to go into
+	HNSDStorageFile *filePtr;
+
+	if( fileMgr->allocateNewFile( getOwnerID(), getInstance(), "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+		return HNSDP_RESULT_FAILURE;
 
     HNSDHardwareOperation *opPtr = new HNSDHardwareOperation( getInstance(), HNHW_OPTYPE_SINGLE_CAPTURE );
 
@@ -542,7 +529,7 @@ HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineClientInterfac
 
     crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
 
-    crPtr->setFileAndPath( capture->registerNextFilename( "capture" ) );
+    crPtr->setFileAndPath( filePtr->getPathAndFile() );
 
 	*rtnPtr = opPtr;
 
@@ -550,18 +537,20 @@ HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineClientInterfac
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareSingleCapture::completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **opPtr )
+HNSDPSHardwareSingleCapture::completedHardwareOperation(  HNSDPipelineParameterMap *paramMap, HNSDStorageManager *fileMgr, HNSDHardwareOperation **opPtr )
 {
     std::cout << "HNSDPSHardwareSingleCapture::completedHardwareOperation() - Cleanup" << std::endl;
 
 	delete *opPtr;
 	*opPtr = NULL;
 
+    paramMap->updatePreviousOutputID( getOwnerID(), getInstance() );
+
 	return HNSDP_RESULT_SUCCESS;
 }
 
-HNSDPSHardwareMove::HNSDPSHardwareMove( std::string instance )
-: HNSDPipelineStepBase( instance )
+HNSDPSHardwareMove::HNSDPSHardwareMove( std::string instance, std::string ownerID )
+: HNSDPipelineStepBase( instance, ownerID )
 {
 
 }
@@ -578,33 +567,22 @@ HNSDPSHardwareMove::getType()
 }
 
 void 
-HNSDPSHardwareMove::initSupportedParameters( HNSDPipelineClientInterface *capture )
+HNSDPSHardwareMove::initSupportedParameters( HNSDPipelineParameterMap *paramMap )
 {
-    // Get access to the parameters
-    HNSDPipeline *pipeline = capture->getPipelinePtr();
-
     // Add the parameters that apply to this transform
-    pipeline->addParameter( getInstance(), "enable", "1", "desc" );
-    pipeline->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
-    pipeline->addParameter( getInstance(), "result_image_index", "", "desc" );
+    paramMap->addParameter( getInstance(), "enable", "1", "desc" );
+    paramMap->addParameter( getInstance(), "bulk_rotate_degrees", "270", "desc" );
+    paramMap->addParameter( getInstance(), "result_image_index", "", "desc" );
 }
 
 bool
-HNSDPSHardwareMove::doesStepApply( HNSDPipelineClientInterface *capture )
+HNSDPSHardwareMove::doesStepApply( HNSDPipelineParameterMap *paramMap )
 {
     return true;
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareMove::applyStep( HNSDPipelineClientInterface *capture )
-{
-    std::cout << "HNSDPSHardwareMove::applyStep - start" << std::endl;
-
-    return HNSDP_RESULT_SUCCESS;
-}
-
-HNSDP_RESULT_T
-HNSDPSHardwareMove::completeStep( HNSDPipelineClientInterface *capture )
+HNSDPSHardwareMove::completeStep( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr )
 {
     std::cout << "HNSDPSHardwareMove::completeStep - start" << std::endl;
 
@@ -613,7 +591,7 @@ HNSDPSHardwareMove::completeStep( HNSDPipelineClientInterface *capture )
 
 
 HNSDP_RESULT_T
-HNSDPSHardwareMove::createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+HNSDPSHardwareMove::createHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **rtnPtr )
 {
     std::cout << "HNSDPSHardwareMove::createHardwareOperation() - Start hardware advance" << std::endl;
 
@@ -627,7 +605,7 @@ HNSDPSHardwareMove::createHardwareOperation( HNSDPipelineClientInterface *captur
 }
 
 HNSDP_RESULT_T
-HNSDPSHardwareMove::completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **opPtr )
+HNSDPSHardwareMove::completedHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **opPtr )
 {
     std::cout << "HNSDPSHardwareMove::completedHardwareOperation() - Cleanup" << std::endl;
 

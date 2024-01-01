@@ -136,6 +136,8 @@ class HNSDImageManager : public HNSDIMRootInterface
 
         IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
 
+        std::string getDefaultCaptureParameterListJSON();
+
     private:
 
         // The root path for storing images

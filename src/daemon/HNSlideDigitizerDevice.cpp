@@ -91,6 +91,9 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     m_activePipeline = NULL;
     m_activeHWOp = NULL;
     
+    // Initialize the storage manager
+    m_storageMgr.start();
+
     // Initialize the image manager object
     m_imageMgr.start( &m_pipelineMgr );
 
@@ -344,40 +347,6 @@ HNSlideDigitizerDevice::updateConfig()
     return HNSDD_RESULT_SUCCESS;
 }
 
-/*
-bool
-HNSlideDigitizerDevice::findNextPipelineStage()
-{
-    HNSDPipeline *pline = m_infoIntf->getPipelinePtr();
-
-    m_curStep = NULL;
-
-    while( m_curStepIndex < pline->getStepCount() )
-    {
-        HNSDPipelineStepBase *step = pline->getStepByIndex( m_curStepIndex );
-
-        if( step->doesStepApply( this ) )
-        {
-            m_curStep = step;
-            return true;
-        }
-
-        m_curStepIndex += 1;
-    }
-
-    return false;
-}
-
-void
-HNSlideDigitizerDevice::::executePipeline()
-{
-    if( m_curStep == NULL )
-        return;
-
-    m_curStep->applyStep( this );
-}
-*/
-
 void
 HNSlideDigitizerDevice::loopIteration()
 {
@@ -524,8 +493,6 @@ HNSlideDigitizerDevice::fdEvent( int sfd )
         // Verify that we can handle a new action,
         // otherwise just spin.
         std::cout << "Action Queue: " << getState() << std::endl;
-        //if( getState() != HNID_STATE_READY )
-        //    return;
 
         // Start the new action
         startAction();
@@ -552,12 +519,6 @@ HNSlideDigitizerDevice::startAction()
 {
     //HNSWDPacketClient packet;
     HNID_ACTBIT_T  actBits = HNID_ACTBIT_CLEAR;
-
-    // Verify that we are in a state that will allow actions to start
-//    if( getState() != HNID_STATE_READY )
-//    {
-//        return;
-//    }
 
     // Pop the action from the queue
     m_curUserAction = ( HNSDAction* ) m_userActionQueue.aquireRecord();

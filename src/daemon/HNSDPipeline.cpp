@@ -12,10 +12,16 @@ HNSDPipelineParameter::~HNSDPipelineParameter()
 
 }
 
+std::string
+HNSDPipelineParameter::generateParameterID( std::string instance, std::string name )
+{
+    return (instance + "." + name);
+}
+
 void
 HNSDPipelineParameter::setName( std::string instance, std::string name )
 {
-    m_name = instance + "." + name;
+    m_name = HNSDPipelineParameter::generateParameterID( instance, name );
 }
 
 void
@@ -67,18 +73,110 @@ HNSDPipelineParameterMap::HNSDPipelineParameterMap()
 
 HNSDPipelineParameterMap::~HNSDPipelineParameterMap()
 {
-
+    clear();
 }
 
 void
-HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, std::string defaultValue, std::string description )
+HNSDPipelineParameterMap::clear()
 {
+    // Cycle through each entry and free the parameter objects
+    for( std::map< std::string, HNSDPipelineParameter* >::iterator it = m_nvPairs.begin(); it != m_nvPairs.end(); it++ )
+    {
+        delete it->second;
+    }
 
+    // clear the map
+    m_nvPairs.clear();
 }
 
-HNSDPipelineStepBase::HNSDPipelineStepBase( std::string instance )
+HNSDP_RESULT_T
+HNSDPipelineParameterMap::findParameter( std::string instance, std::string name, HNSDPipelineParameter **rtnParam )
+{
+    std::string pid = HNSDPipelineParameter::generateParameterID( instance, name );
+
+    std::map< std::string, HNSDPipelineParameter* >::iterator it = m_nvPairs.find( pid );
+
+    *rtnParam = NULL;
+
+    if( it == m_nvPairs.end() )
+        return HNSDP_RESULT_NOT_FOUND;
+
+    *rtnParam = it->second;
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, std::string defaultValue, std::string description )
+{
+    HNSDPipelineParameter *param = NULL;
+
+    if( addParameter( instance, name, &param ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    param->setDesc( description );
+    param->setDefaultValue( defaultValue );
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, HNSDPipelineParameter **rtnParam )
+{
+    HNSDPipelineParameter *param = NULL;
+
+    if( findParameter( instance, name, &param ) == HNSDP_RESULT_NOT_FOUND )
+    {
+        param = new HNSDPipelineParameter;
+        param->setName( instance, name );
+        m_nvPairs.insert( std::pair< std::string, HNSDPipelineParameter* >( param->getName(), param ) );
+    }
+
+    *rtnParam = param;
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPipelineParameterMap::updatePreviousOutputID( std::string ownerID, std::string instanceID )
+{
+    HNSDPipelineParameter *param = NULL;
+
+    if( addParameter( ownerID, "previous_output_ownerID", &param ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    param->setActualValue( ownerID );
+
+    if( addParameter( ownerID, "previous_output_instanceID", &param ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    param->setActualValue( instanceID );
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPipelineParameterMap::getPreviousOutputID( std::string &ownerID, std::string &instanceID )
+{
+    HNSDPipelineParameter *param = NULL;
+
+    if( findParameter( ownerID, "previous_output_ownerID", &param ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    ownerID = param->getActualValueAsStr();
+
+    if( findParameter( ownerID, "previous_output_instanceID", &param ) != HNSDP_RESULT_SUCCESS )
+        return HNSDP_RESULT_FAILURE;
+
+    instanceID = param->getActualValueAsStr();
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDPipelineStepBase::HNSDPipelineStepBase( std::string instance, std::string ownerID )
 {
     m_instance = instance;
+    m_ownerID = ownerID;
 }
 
 HNSDPipelineStepBase::~HNSDPipelineStepBase()
@@ -92,20 +190,26 @@ HNSDPipelineStepBase::getInstance()
     return m_instance;
 }
 
+std::string
+HNSDPipelineStepBase::getOwnerID()
+{
+    return m_ownerID;
+}
+
 HNSDP_RESULT_T
-HNSDPipelineStepBase::executeInline( HNSDPipelineClientInterface *capture )
+HNSDPipelineStepBase::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
     return HNSDP_RESULT_NOT_IMPLEMENTED;
 }
 
 HNSDP_RESULT_T
-HNSDPipelineStepBase::createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+HNSDPipelineStepBase::createHardwareOperation( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr, HNSDHardwareOperation **rtnPtr )
 {
     return HNSDP_RESULT_NOT_IMPLEMENTED;
 }
 
 HNSDP_RESULT_T 
-HNSDPipelineStepBase::completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr )
+HNSDPipelineStepBase::completedHardwareOperation( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr, HNSDHardwareOperation **rtnPtr )
 {
     return HNSDP_RESULT_NOT_IMPLEMENTED;
 }
@@ -124,8 +228,10 @@ HNSDPipeline::~HNSDPipeline()
 }
 
 HNSDP_RESULT_T
-HNSDPipeline::init( HNSDP_TYPE_T type, HNSDPipelineClientInterface *clientInf )
+HNSDPipeline::init( HNSDP_TYPE_T type, std::string ownerID, HNSDStorageManager *storageMgr, HNSDPipelineClientInterface *clientInf )
 {
+    m_ownerID = ownerID;
+    m_storageManager = storageMgr;
     m_clientInf = clientInf;
 
     return HNSDP_RESULT_SUCCESS;
@@ -141,6 +247,21 @@ void
 HNSDPipeline::addParameter( std::string instance, std::string name, std::string defaultValue, std::string description )
 {
     m_paramMap.addParameter( instance, name, defaultValue, description );
+}
+
+HNSDP_RESULT_T
+HNSDPipeline::initializeParameters()
+{
+    // Clear any existing configuration info
+    m_paramMap.clear();
+    
+    // Let each step init its parameters.
+    for( std::vector< HNSDPipelineStepBase* >::iterator it = m_pipeline.begin(); it != m_pipeline.end(); it++ )
+    {
+        (*it)->initSupportedParameters( &m_paramMap );
+    }
+
+    return HNSDP_RESULT_SUCCESS;
 }
 
 uint 
@@ -240,7 +361,7 @@ HNSDPipeline::initiateNextStep()
     {
         HNSDPipelineStepBase *step = m_pipeline[ m_activeStepIndex ];
 
-        if( step->doesStepApply( m_clientInf ) == true )
+        if( step->doesStepApply( &m_paramMap ) == true )
         {
             m_activeStep = step;
             return HNSDP_RESULT_SUCCESS;
@@ -341,7 +462,7 @@ HNSDPipeline::executeInlineStep()
     if( m_activeStep == NULL )
         return HNSDP_RESULT_FAILURE;
 
-    return m_activeStep->executeInline( m_clientInf );
+    return m_activeStep->executeInline( &m_paramMap, m_storageManager );
 }
 
 HNSDP_RESULT_T
@@ -350,7 +471,7 @@ HNSDPipeline::createHardwareOperation( HNSDHardwareOperation **rtnPtr )
     if( m_activeStep == NULL )
         return HNSDP_RESULT_FAILURE;
 
-    return m_activeStep->createHardwareOperation( m_clientInf, rtnPtr );
+    return m_activeStep->createHardwareOperation( &m_paramMap, m_storageManager, rtnPtr );
 }
 
 HNSDP_RESULT_T
@@ -361,5 +482,5 @@ HNSDPipeline::completedHardwareOperation( HNSDHardwareOperation **opPtr )
     if( m_activeStep == NULL )
         return HNSDP_RESULT_FAILURE;
 
-    return m_activeStep->completedHardwareOperation( m_clientInf, opPtr );
+    return m_activeStep->completedHardwareOperation( &m_paramMap, m_storageManager, opPtr );
 }

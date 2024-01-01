@@ -8,39 +8,39 @@
 class HNSDPSOrthogonalRotate : public HNSDPipelineStepBase
 {
     public:
-        HNSDPSOrthogonalRotate( std::string instance );
+        HNSDPSOrthogonalRotate( std::string instance, std::string ownerID );
        ~HNSDPSOrthogonalRotate();
 
     private:
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineParameterMap *paramMap );
 
-        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineParameterMap *paramMap );
 
-        virtual HNSDP_RESULT_T executeInline( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr );
 };
 
 class HNSDPSCrop : public HNSDPipelineStepBase
 {
     public:
-        HNSDPSCrop( std::string instance );
+        HNSDPSCrop( std::string instance, std::string ownerID );
        ~HNSDPSCrop();
 
     private:
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineParameterMap *paramMap );
 
-        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineParameterMap *paramMap );
 
-        virtual HNSDP_RESULT_T executeInline( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr );
 };
 
 #endif //__HNSD_IMAGE_TRANSFORM_H__

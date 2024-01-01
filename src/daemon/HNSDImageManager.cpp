@@ -305,7 +305,7 @@ HNSDImageManager::createCaptures( uint count, bool postAdvance )
     m_nextOrderIndex += 1;
 
     HNSDPipeline *pipeline;
-    m_pipelineMgr->allocatePipeline( HNSDP_TYPE_IMAGE_CAPTURE, newCapRec, &pipeline );
+    m_pipelineMgr->allocatePipeline( HNSDP_TYPE_IMAGE_CAPTURE, newCapRec->getID(), newCapRec, &pipeline );
 
     newCapRec->setPipeline( pipeline );
 
@@ -329,9 +329,10 @@ HNSDImageManager::getCaptureListJSON()
     // Create a json root array
     pjs::Array jsRoot;
 
+    // Create list of capture objects
     for( std::map< std::string, HNSDCaptureRecord* >::iterator rit = m_captureRecordMap.begin(); rit != m_captureRecordMap.end(); rit++ )
     { 
-        // Create a json root object
+        // Create a json capture object
         pjs::Object jsCapObj;
 
         HNSDCaptureRecord *capPtr = rit->second;
@@ -366,7 +367,7 @@ HNSDImageManager::getCaptureListJSON()
 
         jsCapObj.set( "fileList", jsFileList );
 
-        // Add new placement object to return list
+        // Add new capture object to return list
         jsRoot.add( jsCapObj );
     }
 
@@ -450,4 +451,74 @@ HNSDImageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, 
         return IMM_RESULT_FAILURE;
 
     return it->second->getFilePath( fileIndex, rstPath );
+}
+
+std::string
+HNSDImageManager::getDefaultCaptureParameterListJSON()
+{
+    std::ostringstream ostr;
+
+    // Create a json root array
+    pjs::Array jsRoot;
+
+    // Create a temporary pipeline
+    //HNSDCaptureRecord tmpCapture(this);
+    //HNSDPipeline *pipeline;
+    //m_pipelineMgr->allocatePipeline( HNSDP_TYPE_IMAGE_CAPTURE, &tmpCapture, &pipeline );
+
+    // Get its parameter list
+
+    
+    // For each parameter create a return object
+    for( std::map< std::string, HNSDCaptureRecord* >::iterator rit = m_captureRecordMap.begin(); rit != m_captureRecordMap.end(); rit++ )
+    { 
+        // Create a json capture object
+        pjs::Object jsCapObj;
+
+        HNSDCaptureRecord *capPtr = rit->second;
+
+        // Fill in object fields
+        jsCapObj.set( "id", capPtr->getID() );
+        jsCapObj.set( "orderIndex", capPtr->getOrderIndex() );
+        jsCapObj.set( "state", capPtr->getStateAsStr() );
+        jsCapObj.set( "fileCount", capPtr->getFileCount() );
+
+        // Add a file list array
+        pjs::Array jsFileList;
+
+        // Populate generated file data
+        for( uint fidx = 0; fidx < capPtr->getFileCount(); fidx++ )
+        {
+            pjs::Object jsFileInfo;
+            std::string fileName;
+            std::string purpose;
+            std::string tsStr;
+
+            jsFileInfo.set( "index", fidx );
+
+            capPtr->getFileInfo( fidx, fileName, purpose, tsStr );
+
+            jsFileInfo.set( "filename", fileName );
+            jsFileInfo.set( "purpose", purpose );
+            jsFileInfo.set( "timestamp", tsStr );
+
+            jsFileList.add( jsFileInfo );
+        }
+
+        jsCapObj.set( "fileList", jsFileList );
+
+        // Add new capture object to return list
+        jsRoot.add( jsCapObj );
+    }
+
+    try 
+    { 
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+    }
+    catch( ... )
+    {
+        return ""; 
+    }
+
+    return ostr.str();
 }

@@ -27,6 +27,7 @@ SET( HNSLDIGD_SRC
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSlideDigitizerDevice.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSDAction.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSDImageTransform.cpp
+     ${CMAKE_SOURCE_DIR}/src/daemon/HNSDStorageManager.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSDImageManager.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/HNSDHardwareControl.cpp
      ${CMAKE_SOURCE_DIR}/src/daemon/CameraManager.cpp

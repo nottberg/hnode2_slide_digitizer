@@ -5,12 +5,15 @@
 #include <map>
 #include <string>
 
+#include "HNSDStorageManager.h"
+
 typedef enum HNSDPipelineResultEnum
 {
     HNSDP_RESULT_SUCCESS,
     HNSDP_RESULT_FAILURE,
     HNSDP_RESULT_NOT_IMPLEMENTED,
-    HNSDP_RESULT_PIPELINE_COMPLETE    
+    HNSDP_RESULT_PIPELINE_COMPLETE,
+    HNSDP_RESULT_NOT_FOUND
 }HNSDP_RESULT_T;
 
 typedef enum HNSDPipelineTypeEnum {
@@ -68,6 +71,8 @@ class HNSDPipelineParameter
         std::string getDefaultValue();
         std::string getActualValueAsStr();
 
+        static std::string generateParameterID( std::string instance, std::string name );
+        
     private:
         std::string m_name;
 
@@ -84,11 +89,21 @@ class HNSDPipelineParameterMap
         HNSDPipelineParameterMap();
        ~HNSDPipelineParameterMap();
 
-        void addParameter( std::string instance, std::string name, std::string defaultValue, std::string description );
+        void clear();
+
+        HNSDP_RESULT_T findParameter( std::string instance, std::string name, HNSDPipelineParameter **rtnParam );
+
+        HNSDP_RESULT_T addParameter( std::string instance, std::string name, std::string defaultValue, std::string description );
+
+        HNSDP_RESULT_T addParameter( std::string instance, std::string name, HNSDPipelineParameter **rtnParam );
+
+        HNSDP_RESULT_T updatePreviousOutputID( std::string ownerID, std::string instanceID );
+
+        HNSDP_RESULT_T getPreviousOutputID( std::string &ownerID, std::string &instanceID );
 
     private:
 
-        std::map< std::string, HNSDPipelineParameter > m_nvPairs;
+        std::map< std::string, HNSDPipelineParameter* > m_nvPairs;
 
 };
 
@@ -111,28 +126,30 @@ class HNSDPipelineClientInterface
 class HNSDPipelineStepBase
 {
     public:
-        HNSDPipelineStepBase( std::string instance );
+        HNSDPipelineStepBase( std::string instance, std::string ownerID );
        ~HNSDPipelineStepBase();
 
         std::string getInstance();
+        std::string getOwnerID();
 
         virtual HNSD_PSTEP_TYPE_T getType() = 0;
 
-        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture ) = 0;
+        virtual void initSupportedParameters( HNSDPipelineParameterMap *params ) = 0;
 
-        virtual bool doesStepApply( HNSDPipelineClientInterface *capture ) = 0;
+        virtual bool doesStepApply( HNSDPipelineParameterMap *params ) = 0;
 
-        virtual HNSDP_RESULT_T executeInline( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T executeInline( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr );
 
-        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr , HNSDHardwareOperation **rtnPtr );
 
-        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr , HNSDHardwareOperation **rtnPtr );
  
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture ) = 0;
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr ) = 0;
 
     private:
 
         std::string m_instance;
+        std::string m_ownerID;
 };
 
 class HNSDPipeline
@@ -141,7 +158,9 @@ class HNSDPipeline
         HNSDPipeline();
        ~HNSDPipeline();
 
-        HNSDP_RESULT_T init( HNSDP_TYPE_T type, HNSDPipelineClientInterface *clientInf );
+        HNSDP_RESULT_T init( HNSDP_TYPE_T type, std::string ownerID, HNSDStorageManager *storageMgr, HNSDPipelineClientInterface *clientInf );
+
+        HNSDP_RESULT_T initializeParameters();
 
         void addStep( HNSDPipelineStepBase *newStep );
 
@@ -177,7 +196,11 @@ class HNSDPipeline
 
         void setExecutionState( HNSDP_EXEC_STATE_T newState );
 
+        HNSDStorageManager *m_storageManager;
+
         HNSDPipelineClientInterface *m_clientInf;
+
+        std::string m_ownerID;
 
         std::vector< HNSDPipelineStepBase* > m_pipeline;
 
@@ -192,7 +215,7 @@ class HNSDPipeline
 class HNSDPipelineManagerIntf
 {
     public:
-        virtual HNSDP_RESULT_T allocatePipeline( HNSDP_TYPE_T type, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline ) = 0;
+        virtual HNSDP_RESULT_T allocatePipeline( HNSDP_TYPE_T type, std::string ownerID, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline ) = 0;
 
         virtual HNSDP_RESULT_T submitPipelineForExecution( HNSDPipeline *pipeline ) = 0;
 

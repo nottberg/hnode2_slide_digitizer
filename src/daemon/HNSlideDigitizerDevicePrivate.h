@@ -104,6 +104,7 @@ class HNSlideDigitizerDevice : public Poco::Util::ServerApplication, public HNDE
         HNSDAction     *m_curUserAction;
         HNReqWaitQueue  m_userActionQueue;
 
+        HNSDStorageManager  m_storageMgr;
         HNSDPipelineManager m_pipelineMgr;
 
         HNSDPipeline          *m_activePipeline;        

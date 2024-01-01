@@ -9,7 +9,7 @@
 
 HNSDPipelineManager::HNSDPipelineManager()
 {
-
+    m_storageMgr = NULL;
 }
 
 HNSDPipelineManager::~HNSDPipelineManager()
@@ -17,34 +17,49 @@ HNSDPipelineManager::~HNSDPipelineManager()
 
 }
 
+void
+HNSDPipelineManager::setStorageManager( HNSDStorageManager *storageMgr )
+{
+    m_storageMgr = storageMgr;
+}
+
+HNSDStorageManager*
+HNSDPipelineManager::getStorageManager()
+{
+    return m_storageMgr;
+}
+
 HNSDP_RESULT_T
-HNSDPipelineManager::allocatePipeline( HNSDP_TYPE_T type, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline )
+HNSDPipelineManager::allocatePipeline( HNSDP_TYPE_T type, std::string ownerID, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline )
 {
     HNSDPipeline* newPipe = new HNSDPipeline;
 
     *rtnPipeline = NULL;
 
-    newPipe->init( type, clientInf );
+    newPipe->init( type, ownerID, m_storageMgr, clientInf );
 
     switch( type )
     {
         case HNSDP_TYPE_IMAGE_CAPTURE:
         {
             // Initialize the pipeline with the appropriate steps.
-            HNSDPSHardwareSingleCapture* hwCapture = new HNSDPSHardwareSingleCapture( "imageCapture" );
+            HNSDPSHardwareSingleCapture* hwCapture = new HNSDPSHardwareSingleCapture( "imageCapture", ownerID );
             newPipe->addStep( hwCapture );
 
-            HNSDPSHardwareMove* hwMove = new HNSDPSHardwareMove( "slideAdvance" );
+            HNSDPSHardwareMove* hwMove = new HNSDPSHardwareMove( "slideAdvance", ownerID );
             newPipe->addStep( hwMove );
 
-            HNSDPSOrthogonalRotate* orthoRotate = new HNSDPSOrthogonalRotate( "orthoRotate" );
+            HNSDPSOrthogonalRotate* orthoRotate = new HNSDPSOrthogonalRotate( "orthoRotate", ownerID );
             newPipe->addStep( orthoRotate );
 
-            HNSDPSCrop* crop = new HNSDPSCrop( "cropRaw" );
+            HNSDPSCrop* crop = new HNSDPSCrop( "cropRaw", ownerID );
             newPipe->addStep( crop );
         }
         break;
     }
+
+    // Have the steps fill in their supported parameters
+    newPipe->initializeParameters();
 
     *rtnPipeline = newPipe;
 

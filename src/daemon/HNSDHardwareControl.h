@@ -163,47 +163,43 @@ class HNSDHardwareControl : public CameraEventInf
 class HNSDPSHardwareSingleCapture : public HNSDPipelineStepBase
 {
     public:
-        HNSDPSHardwareSingleCapture( std::string instance );
+        HNSDPSHardwareSingleCapture( std::string instance, std::string ownerID );
        ~HNSDPSHardwareSingleCapture();
 
     private:
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineParameterMap *paramMap );
 
-        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineParameterMap *paramMap );
 
-        virtual HNSDP_RESULT_T applyStep( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **rtnPtr );
 
-        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
-
-        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **rtnPtr );
 };
 
 class HNSDPSHardwareMove : public HNSDPipelineStepBase
 {
     public:
-        HNSDPSHardwareMove( std::string instance );
+        HNSDPSHardwareMove( std::string instance, std::string ownerID );
        ~HNSDPSHardwareMove();
 
     private:
 
         virtual HNSD_PSTEP_TYPE_T getType();
 
-        virtual void initSupportedParameters( HNSDPipelineClientInterface *capture );
+        virtual void initSupportedParameters( HNSDPipelineParameterMap *paramMap );
 
-        virtual bool doesStepApply( HNSDPipelineClientInterface *capture );
+        virtual bool doesStepApply( HNSDPipelineParameterMap *paramMap );
 
-        virtual HNSDP_RESULT_T applyStep( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T completeStep( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr );
 
-        virtual HNSDP_RESULT_T completeStep( HNSDPipelineClientInterface *capture );
+        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **rtnPtr );
 
-        virtual HNSDP_RESULT_T createHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
-
-        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineClientInterface *capture, HNSDHardwareOperation **rtnPtr );
+        virtual HNSDP_RESULT_T completedHardwareOperation( HNSDPipelineParameterMap *params, HNSDStorageManager *fileMgr, HNSDHardwareOperation **rtnPtr );
 };
 
 #endif // __HNSD_HARDWARE_CONTROL_H__
