@@ -1,14 +1,12 @@
-//#include <sys/time.h>
-
 #include <iostream>
 
-//#include <Poco/JSON/Object.h>
-//#include <Poco/JSON/Parser.h>
-//#include <Poco/StreamCopier.h>
+#include <Poco/JSON/Object.h>
+#include <Poco/JSON/Parser.h>
+#include <Poco/StreamCopier.h>
 
 #include "HNSDStorageManager.h"
 
-//namespace pjs = Poco::JSON;
+namespace pjs = Poco::JSON;
 
 HNSDStorageFile::HNSDStorageFile()
 {
@@ -19,6 +17,12 @@ HNSDStorageFile::HNSDStorageFile()
 HNSDStorageFile::~HNSDStorageFile()
 {
 
+}
+
+void
+HNSDStorageFile::setID( std::string id )
+{
+    m_id = id;
 }
 
 void
@@ -51,12 +55,18 @@ HNSDStorageFile::setTimestampStr( std::string tsStr )
     m_timestampStr = tsStr;
 }
 
-void
-HNSDStorageFile::getInfo( std::string &fileName, std::string &purpose, std::string &tsStr )
+//void
+//HNSDStorageFile::getInfo( std::string &fileName, std::string &purpose, std::string &tsStr )
+//{
+//    fileName = getFilename();
+//    purpose = m_purpose;
+//    tsStr = m_timestampStr;
+//}
+
+std::string 
+HNSDStorageFile::getID()
 {
-    fileName = getFilename();
-    purpose = m_purpose;
-    tsStr = m_timestampStr;
+    return m_id;
 }
 
 std::string 
@@ -70,6 +80,18 @@ HNSDStorageFile::getFilename()
     rtnStr = tmpFN;
 
     return rtnStr;
+}
+
+std::string
+HNSDStorageFile::getPurpose()
+{
+    return m_purpose;
+}
+
+std::string
+HNSDStorageFile::getTimestampStr()
+{
+    return m_timestampStr;
 }
 
 std::string 
@@ -127,9 +149,87 @@ HNSDStorageManager::findFile( std::string ownerID, std::string instanceID, std::
 }
 
 HNSDSM_RESULT_T
-HNSDStorageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath )
+HNSDStorageManager::getFileLocalPath( std::string fileID, std::string &rstPath )
 {
     rstPath.clear();
 
     return HNSDSM_RESULT_SUCCESS;
+}
+
+HNSDSM_RESULT_T
+HNSDStorageManager::getFileIDListForOwner( std::string ownerID, std::vector< std::string > &fileIDList )
+{
+
+    return HNSDSM_RESULT_SUCCESS;
+}
+
+std::string
+HNSDStorageManager::getFileListJSON()
+{
+    std::ostringstream ostr;
+
+    // Create a json root array
+    pjs::Array jsRoot;
+
+    // Create list of capture objects
+    for( std::map< std::string, HNSDStorageFile* >::iterator rit = m_fileMap.begin(); rit != m_fileMap.end(); rit++ )
+    { 
+        // Create a json File object
+        pjs::Object jsFileObj;
+
+        HNSDStorageFile *filePtr = rit->second;
+
+        // Fill in object fields
+        jsFileObj.set( "id", filePtr->getID() );
+        jsFileObj.set( "purpose", filePtr->getPurpose() );
+        jsFileObj.set( "filename", filePtr->getFilename() );
+        jsFileObj.set( "timestamp", filePtr->getTimestampStr() );
+
+        // Add new capture object to return list
+        jsRoot.add( jsFileObj );
+    }
+
+    try 
+    { 
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+    }
+    catch( ... )
+    {
+        return ""; 
+    }
+
+    return ostr.str();
+}
+
+std::string
+HNSDStorageManager::getFileJSON( std::string fileID )
+{
+    std::ostringstream ostr;
+
+    // Create a json root object
+    pjs::Object jsRoot;
+
+    std::map< std::string, HNSDStorageFile* >::iterator rit = m_fileMap.find( fileID );
+
+    if( rit != m_fileMap.end() )
+    { 
+        HNSDStorageFile *filePtr = rit->second;
+
+        // Fill in object fields
+        jsRoot.set( "id", filePtr->getID() );
+        jsRoot.set( "purpose", filePtr->getPurpose() );
+        jsRoot.set( "filename", filePtr->getFilename() );
+        jsRoot.set( "timestamp", filePtr->getTimestampStr() );
+    }
+
+    try 
+    { 
+        pjs::Stringifier::stringify( jsRoot, ostr, 1 ); 
+    }
+    catch( ... )
+    {
+        return ""; 
+    }
+
+    return ostr.str();
 }

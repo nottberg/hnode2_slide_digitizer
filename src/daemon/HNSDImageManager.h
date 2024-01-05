@@ -25,6 +25,7 @@ typedef enum HNSDCaptureFileType
     HNSDCAP_FT_JPEG
 }HNSDCAP_FT_T;
 
+#if 0
 class HNSDCaptureFile
 {
     public:
@@ -54,6 +55,7 @@ class HNSDCaptureFile
         std::string m_timestampStr;
 
 };
+#endif
 
 class HNSDIMRootInterface
 {
@@ -82,15 +84,15 @@ class HNSDCaptureRecord : public HNSDPipelineClientInterface
         HNSDCAP_EXEC_STATE_T getState();
         std::string getStateAsStr();
 
-        uint getFileCount();
-        IMM_RESULT_T getFileInfo( uint fileIndex, std::string &fileName, std::string &purpose, std::string &tsStr );
-        IMM_RESULT_T getFilePath( uint fileIndex, std::string &rtnPath );
+        //uint getFileCount();
+        //IMM_RESULT_T getFileInfo( uint fileIndex, std::string &fileName, std::string &purpose, std::string &tsStr );
+        //IMM_RESULT_T getFilePath( uint fileIndex, std::string &rtnPath );
 
         bool isPending();
 
-        virtual std::string registerNextFilename( std::string purpose );
+        //virtual std::string registerNextFilename( std::string purpose );
 
-        virtual std::string getLastOutputPathAndFile();
+        //virtual std::string getLastOutputPathAndFile();
 
         virtual void makePending();
         virtual void makeActive();
@@ -106,11 +108,11 @@ class HNSDCaptureRecord : public HNSDPipelineClientInterface
 
         uint m_orderIndex;
 
-        uint m_nextFileIndex;
+        //uint m_nextFileIndex;
 
         HNSDPipeline *m_pipeline;
 
-        std::vector< HNSDCaptureFile* > m_fileList;
+        //std::vector< HNSDCaptureFile* > m_fileList;
 
         HNSDCAP_EXEC_STATE_T m_executionState;
 };
@@ -121,7 +123,7 @@ class HNSDImageManager : public HNSDIMRootInterface
          HNSDImageManager();
         ~HNSDImageManager();
 
-        IMM_RESULT_T start( HNSDPipelineManagerIntf *pipelineMgr );
+        IMM_RESULT_T start( HNSDStorageManager *storageMgr, HNSDPipelineManagerIntf *pipelineMgr );
         IMM_RESULT_T stop();
 
         virtual std::string getStorageRootPath();
@@ -134,7 +136,7 @@ class HNSDImageManager : public HNSDIMRootInterface
 
         std::string getCaptureJSON( std::string capID );
 
-        IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
+        //IMM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
 
         std::string getDefaultCaptureParameterListJSON();
 
@@ -152,6 +154,9 @@ class HNSDImageManager : public HNSDIMRootInterface
 
         // The image transformation pipeline
         // HNSDPipeline m_pipeline;
+
+        // The storage manager
+        HNSDStorageManager *m_storageMgr;
 
         // The pointer to the pipeline manager object
         HNSDPipelineManagerIntf *m_pipelineMgr;

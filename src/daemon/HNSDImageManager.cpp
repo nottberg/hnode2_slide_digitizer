@@ -10,6 +10,7 @@
 
 namespace pjs = Poco::JSON;
 
+#if 0
 HNSDCaptureFile::HNSDCaptureFile()
 {
     m_type     = HNSDCAP_FT_NOTSET;
@@ -81,6 +82,7 @@ HNSDCaptureFile::getPathAndFile()
 
     return fullPath;
 }
+#endif
 
 HNSDCaptureRecord::HNSDCaptureRecord( HNSDIMRootInterface *infoIntf )
 {
@@ -173,6 +175,7 @@ HNSDCaptureRecord::getStateAsStr()
     return "Unknown";
 }
 
+#if 0
 uint
 HNSDCaptureRecord::getFileCount()
 {
@@ -203,6 +206,7 @@ HNSDCaptureRecord::getFilePath( uint fileIndex, std::string &rtnPath )
 
     return IMM_RESULT_SUCCESS;
 }
+#endif
 
 bool
 HNSDCaptureRecord::isPending()
@@ -210,6 +214,7 @@ HNSDCaptureRecord::isPending()
     return (m_executionState == HNSDCAP_EXEC_STATE_PENDING) ? true : false;
 }
 
+#if 0
 std::string
 HNSDCaptureRecord::registerNextFilename( std::string purpose )
 {
@@ -236,6 +241,7 @@ HNSDCaptureRecord::getLastOutputPathAndFile()
 
     return m_fileList[len-1]->getPathAndFile();
 }
+#endif
 
 void 
 HNSDCaptureRecord::makePending()
@@ -259,6 +265,8 @@ HNSDCaptureRecord::makeComplete()
 
 HNSDImageManager::HNSDImageManager()
 {
+    m_storageMgr = NULL;
+    m_pipelineMgr = NULL;
     m_nextOrderIndex = 0;
 }
 
@@ -268,10 +276,11 @@ HNSDImageManager::~HNSDImageManager()
 }
 
 IMM_RESULT_T
-HNSDImageManager::start( HNSDPipelineManagerIntf *pipelineMgr )
+HNSDImageManager::start( HNSDStorageManager *storageMgr, HNSDPipelineManagerIntf *pipelineMgr )
 {
     IMM_RESULT_T result = IMM_RESULT_SUCCESS;
 
+    m_storageMgr = storageMgr;
     m_pipelineMgr = pipelineMgr;
 
     return result;
@@ -341,26 +350,21 @@ HNSDImageManager::getCaptureListJSON()
         jsCapObj.set( "id", capPtr->getID() );
         jsCapObj.set( "orderIndex", capPtr->getOrderIndex() );
         jsCapObj.set( "state", capPtr->getStateAsStr() );
-        jsCapObj.set( "fileCount", capPtr->getFileCount() );
+
+        std::vector< std::string > fileIDList;
+        m_storageMgr->getFileIDListForOwner( capPtr->getID(), fileIDList );
+
+        jsCapObj.set( "fileCount", fileIDList.size() );
 
         // Add a file list array
         pjs::Array jsFileList;
 
         // Populate generated file data
-        for( uint fidx = 0; fidx < capPtr->getFileCount(); fidx++ )
+        for( std::vector< std::string >::iterator it = fileIDList.begin(); it != fileIDList.end(); it++ )
         {
             pjs::Object jsFileInfo;
-            std::string fileName;
-            std::string purpose;
-            std::string tsStr;
 
-            jsFileInfo.set( "index", fidx );
-
-            capPtr->getFileInfo( fidx, fileName, purpose, tsStr );
-
-            jsFileInfo.set( "filename", fileName );
-            jsFileInfo.set( "purpose", purpose );
-            jsFileInfo.set( "timestamp", tsStr );
+            jsFileInfo.set( "id", *it );
 
             jsFileList.add( jsFileInfo );
         }
@@ -401,26 +405,21 @@ HNSDImageManager::getCaptureJSON( std::string capID )
         jsRoot.set( "id", capPtr->getID() );
         jsRoot.set( "orderIndex", capPtr->getOrderIndex() );
         jsRoot.set( "state", capPtr->getStateAsStr() );
-        jsRoot.set( "fileCount", capPtr->getFileCount() );
+
+        std::vector< std::string > fileIDList;
+        m_storageMgr->getFileIDListForOwner( capPtr->getID(), fileIDList );
+
+        jsRoot.set( "fileCount", fileIDList.size() );
 
         // Add a file list array
         pjs::Array jsFileList;
 
         // Populate generated file data
-        for( uint fidx = 0; fidx < capPtr->getFileCount(); fidx++ )
+        for( std::vector< std::string >::iterator it = fileIDList.begin(); it != fileIDList.end(); it++ )
         {
             pjs::Object jsFileInfo;
-            std::string fileName;
-            std::string purpose;
-            std::string tsStr;
 
-            jsFileInfo.set( "index", fidx );
-
-            capPtr->getFileInfo( fidx, fileName, purpose, tsStr );
-
-            jsFileInfo.set( "filename", fileName );
-            jsFileInfo.set( "purpose", purpose );
-            jsFileInfo.set( "timestamp", tsStr );
+            jsFileInfo.set( "id", *it );
 
             jsFileList.add( jsFileInfo );
         }
@@ -440,6 +439,7 @@ HNSDImageManager::getCaptureJSON( std::string capID )
     return ostr.str();
 }
 
+#if 0
 IMM_RESULT_T
 HNSDImageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath )
 {
@@ -452,6 +452,7 @@ HNSDImageManager::getCapturePathAndFile( std::string captureID, uint fileIndex, 
 
     return it->second->getFilePath( fileIndex, rstPath );
 }
+#endif
 
 std::string
 HNSDImageManager::getDefaultCaptureParameterListJSON()
@@ -468,7 +469,7 @@ HNSDImageManager::getDefaultCaptureParameterListJSON()
 
     // Get its parameter list
 
-    
+#if 0    
     // For each parameter create a return object
     for( std::map< std::string, HNSDCaptureRecord* >::iterator rit = m_captureRecordMap.begin(); rit != m_captureRecordMap.end(); rit++ )
     { 
@@ -510,6 +511,7 @@ HNSDImageManager::getDefaultCaptureParameterListJSON()
         // Add new capture object to return list
         jsRoot.add( jsCapObj );
     }
+#endif
 
     try 
     { 

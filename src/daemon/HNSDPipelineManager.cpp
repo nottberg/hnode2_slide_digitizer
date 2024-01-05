@@ -17,10 +17,18 @@ HNSDPipelineManager::~HNSDPipelineManager()
 
 }
 
-void
-HNSDPipelineManager::setStorageManager( HNSDStorageManager *storageMgr )
+HNSDP_RESULT_T
+HNSDPipelineManager::start( HNSDStorageManager *storageMgr )
 {
     m_storageMgr = storageMgr;
+
+    return HNSDP_RESULT_SUCCESS;
+}
+
+HNSDP_RESULT_T
+HNSDPipelineManager::stop()
+{
+    return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDStorageManager*

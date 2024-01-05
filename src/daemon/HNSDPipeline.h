@@ -72,7 +72,7 @@ class HNSDPipelineParameter
         std::string getActualValueAsStr();
 
         static std::string generateParameterID( std::string instance, std::string name );
-        
+
     private:
         std::string m_name;
 
@@ -112,9 +112,9 @@ class HNSDPipelineClientInterface
     public:
         virtual HNSDPipeline* getPipelinePtr() = 0;
 
-        virtual std::string registerNextFilename( std::string purpose ) = 0;
+        //virtual std::string registerNextFilename( std::string purpose ) = 0;
 
-        virtual std::string getLastOutputPathAndFile() = 0;
+        //virtual std::string getLastOutputPathAndFile() = 0;
 
         virtual void makePending() = 0;
 

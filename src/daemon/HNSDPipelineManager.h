@@ -9,7 +9,9 @@ class HNSDPipelineManager : public HNSDPipelineManagerIntf
         HNSDPipelineManager();
        ~HNSDPipelineManager();
 
-        void setStorageManager( HNSDStorageManager *storageMgr );
+        HNSDP_RESULT_T start( HNSDStorageManager *storageMgr );
+        HNSDP_RESULT_T stop();
+
         HNSDStorageManager* getStorageManager();
 
         virtual HNSDP_RESULT_T allocatePipeline( HNSDP_TYPE_T type, std::string ownerID, HNSDPipelineClientInterface *clientInf, HNSDPipeline **rtnPipeline );

@@ -2,6 +2,7 @@
 #define __HNSD_STORAGE_MANAGER_H__
 
 #include <string>
+#include <vector>
 #include <map>
 
 typedef enum HNSDStorageManagerResultEnum
@@ -22,18 +23,26 @@ class HNSDStorageFile
         HNSDStorageFile();
        ~HNSDStorageFile();
 
+        void setID( std::string id );
+
         void setType( HNSDSM_FT_T type );
         void setPath( std::string path );
         void setIndex( uint index );
         void setPurpose( std::string purpose );
         void setTimestampStr( std::string tsStr );
 
+        std::string getID();
+
         std::string getFilename();
+        std::string getPurpose();
+        std::string getTimestampStr();
         std::string getPathAndFile();
 
-        void getInfo( std::string &fileName, std::string &purpose, std::string &tsStr );
+        //void getInfo( std::string &fileName, std::string &purpose, std::string &tsStr );
 
     private:
+        std::string m_id;
+
         HNSDSM_FT_T m_type;
 
         std::string m_path;
@@ -61,8 +70,12 @@ class HNSDStorageManager
 
         virtual std::string getStorageRootPath();
 
-        HNSDSM_RESULT_T getCapturePathAndFile( std::string captureID, uint fileIndex, std::string &rstPath );
+        HNSDSM_RESULT_T getFileLocalPath( std::string fileID, std::string &rstPath );
 
+        HNSDSM_RESULT_T getFileIDListForOwner( std::string ownerID, std::vector< std::string > &fileIDList );
+
+        std::string getFileListJSON();
+        std::string getFileJSON( std::string fileID );
 
     private:
 

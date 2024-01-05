@@ -94,8 +94,11 @@ HNSlideDigitizerDevice::main( const std::vector<std::string>& args )
     // Initialize the storage manager
     m_storageMgr.start();
 
+    // Initialize the pipeline manager
+    m_pipelineMgr.start( &m_storageMgr );
+
     // Initialize the image manager object
-    m_imageMgr.start( &m_pipelineMgr );
+    m_imageMgr.start( &m_storageMgr, &m_pipelineMgr );
 
     // Initialize the hardware control object
     m_hardwareCtrl.init( &m_hardwareNotifyTrigger );
@@ -827,39 +830,29 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         action.setType( HNSD_AR_TYPE_DELETE_CAPTURE );
         action.setRequestCaptureID( captureID );
     }
-    // GET "/hnode2/slide-digitizer/captures/{captureid}/image"
-    else if( "getCaptureImage" == opID )
+    // GET "/hnode2/slide-digitizer/files/{fileid}/download"
+    else if( "downloadFile" == opID )
     {
-        std::string captureID;
-        std::string fileIdxStr;
+        std::string fileID;
 
-        if( opData->getParam( "captureid", captureID ) == true )
+        if( opData->getParam( "fileid", fileID ) == true )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
             return; 
         }
 
-        if( opData->getParam( "fileIndex", fileIdxStr ) == true )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            opData->responseSend();
-            return; 
-        }
-
-        std::cout << "=== Get Capture Image Request (id: " << captureID << " , " << fileIdxStr << ") ===" << std::endl;
-
-        uint fileIndex = strtol( fileIdxStr.c_str(), NULL, 0);
+        std::cout << "=== Download File Request (id: " << fileID << ") ===" << std::endl;
 
         std::string filePath;
-        if( m_imageMgr.getCapturePathAndFile( captureID, fileIndex, filePath ) != IMM_RESULT_SUCCESS )
+        if( m_storageMgr.getFileLocalPath( fileID, filePath ) != HNSDSM_RESULT_SUCCESS )
         {
             opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
             opData->responseSend();
             return; 
         } 
 
-        std::cout << "=== Get Capture Image Request (filepath: " << filePath << ") ===" << std::endl;
+        std::cout << "=== Download File Request (filepath: " << filePath << ") ===" << std::endl;
 
         // Stat the image file to get its length
         struct stat statBuf;
@@ -871,7 +864,7 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
             return; 
         }
 
-        std::cout << "Image File Length: " << statBuf.st_size << std::endl;
+        std::cout << "Download File Length: " << statBuf.st_size << std::endl;
 
         // Set response content type
         opData->responseSetChunkedTransferEncoding( true );
@@ -1062,6 +1055,91 @@ const std::string g_HNode2TestRest = R"(
         }
       },
 
+      "/hnode2/slide-digitizer/files": {
+        "get": {
+          "summary": "Return list of generated files.",
+          "operationId": "getFileList",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/slide-digitizer/files/{fileid}": {
+        "get": {
+          "summary": "Get information about a specific generated file.",
+          "operationId": "getFileInfo",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete a specific generated file",
+          "operationId": "deleteFile",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
+      "/hnode2/slide-digitizer/files/{fileid}/download": {
+        "get": {
+          "summary": "Download a specific file",
+          "operationId": "downloadFile",
+          "responses": {
+            "200": {
+              "description": "successful operation",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid status value"
+            }
+          }
+        }
+      },
+
       "/hnode2/slide-digitizer/captures": {
         "get": {
           "summary": "Return list of active captures.",
@@ -1127,28 +1205,6 @@ const std::string g_HNode2TestRest = R"(
         "delete": {
           "summary": "Delete a specific capture",
           "operationId": "deleteCapture",
-          "responses": {
-            "200": {
-              "description": "successful operation",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object"
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid status value"
-            }
-          }
-        }
-      },
-
-      "/hnode2/slide-digitizer/captures/{captureid}/image/{fileIndex}": {
-        "get": {
-          "summary": "Return the captured image.",
-          "operationId": "getCaptureImage",
           "responses": {
             "200": {
               "description": "successful operation",
