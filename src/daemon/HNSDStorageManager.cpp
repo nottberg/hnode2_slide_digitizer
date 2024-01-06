@@ -223,7 +223,14 @@ HNSDStorageManager::findFile( std::string fileID, HNSDStorageFile **filePtr )
 HNSDSM_RESULT_T
 HNSDStorageManager::getLocalFilePath( std::string fileID, std::string &rstPath )
 {
+    HNSDStorageFile *filePtr = NULL;
+
     rstPath.clear();
+
+    if( findFile( fileID, &filePtr ) != HNSDSM_RESULT_SUCCESS )
+        return HNSDSM_RESULT_NOT_FOUND;
+
+    rstPath = filePtr->getLocalFilePath();
 
     return HNSDSM_RESULT_SUCCESS;
 }

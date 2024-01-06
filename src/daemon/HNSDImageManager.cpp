@@ -10,80 +10,6 @@
 
 namespace pjs = Poco::JSON;
 
-#if 0
-HNSDCaptureFile::HNSDCaptureFile()
-{
-    m_type     = HNSDCAP_FT_NOTSET;
-    m_indexNum = 0;
-}
-
-HNSDCaptureFile::~HNSDCaptureFile()
-{
-
-}
-
-void
-HNSDCaptureFile::setType( HNSDCAP_FT_T type )
-{
-    m_type = type;
-}
-
-void
-HNSDCaptureFile::setPath( std::string path )
-{
-    m_path = path;
-}
-
-void
-HNSDCaptureFile::setIndex( uint index )
-{
-    m_indexNum = index;
-}
-
-void
-HNSDCaptureFile::setPurpose( std::string purpose )
-{
-    m_purpose = purpose;
-}
-
-void
-HNSDCaptureFile::setTimestampStr( std::string tsStr )
-{
-    m_timestampStr = tsStr;
-}
-
-void
-HNSDCaptureFile::getInfo( std::string &fileName, std::string &purpose, std::string &tsStr )
-{
-    fileName = getFilename();
-    purpose = m_purpose;
-    tsStr = m_timestampStr;
-}
-
-std::string 
-HNSDCaptureFile::getFilename()
-{
-    char tmpFN[256];
-    std::string rtnStr;
-
-    sprintf( tmpFN, "hnsd_%s_%u_%s.jpg", m_timestampStr.c_str(), m_indexNum, m_purpose.c_str() );
-    
-    rtnStr = tmpFN;
-
-    return rtnStr;
-}
-
-std::string 
-HNSDCaptureFile::getPathAndFile()
-{
-    std::string fullPath;
-
-    fullPath = m_path + "/" + getFilename();
-
-    return fullPath;
-}
-#endif
-
 HNSDCaptureRecord::HNSDCaptureRecord( HNSDIMRootInterface *infoIntf )
 {
     m_infoIntf = infoIntf;
@@ -175,73 +101,11 @@ HNSDCaptureRecord::getStateAsStr()
     return "Unknown";
 }
 
-#if 0
-uint
-HNSDCaptureRecord::getFileCount()
-{
-    return m_fileList.size();
-}
-
-IMM_RESULT_T
-HNSDCaptureRecord::getFileInfo( uint fileIndex, std::string &fileName, std::string &purpose, std::string &tsStr )
-{
-    if( fileIndex >= m_fileList.size() )
-        return IMM_RESULT_FAILURE;
-
-    m_fileList[fileIndex]->getInfo( fileName, purpose, tsStr );
-    return IMM_RESULT_SUCCESS;
-}
-
-IMM_RESULT_T
-HNSDCaptureRecord::getFilePath( uint fileIndex, std::string &rtnPath )
-{
-    std::string filename;
-
-    rtnPath.clear();
-
-    if( fileIndex >= m_fileList.size() )
-        return IMM_RESULT_FAILURE;
-
-    rtnPath = m_fileList[fileIndex]->getPathAndFile();
-
-    return IMM_RESULT_SUCCESS;
-}
-#endif
-
 bool
 HNSDCaptureRecord::isPending()
 {
     return (m_executionState == HNSDCAP_EXEC_STATE_PENDING) ? true : false;
 }
-
-#if 0
-std::string
-HNSDCaptureRecord::registerNextFilename( std::string purpose )
-{
-    HNSDCaptureFile *newFile = new HNSDCaptureFile;
-
-    newFile->setPath( m_infoIntf->getStorageRootPath() );
-    newFile->setTimestampStr( m_timestampStr );
-    newFile->setType( HNSDCAP_FT_JPEG );
-    newFile->setPurpose( purpose );
-    newFile->setIndex( m_nextFileIndex );
-    m_nextFileIndex += 1;
-
-    m_fileList.push_back( newFile );
-
-    return newFile->getPathAndFile();
-}
-
-std::string
-HNSDCaptureRecord::getLastOutputPathAndFile()
-{
-    int len = m_fileList.size();
-    if( len == 0 )
-        return "";
-
-    return m_fileList[len-1]->getPathAndFile();
-}
-#endif
 
 void 
 HNSDCaptureRecord::makePending()
@@ -357,19 +221,14 @@ HNSDImageManager::getCaptureListJSON()
         jsCapObj.set( "fileCount", fileIDList.size() );
 
         // Add a file list array
-        pjs::Array jsFileList;
+        pjs::Array jsFileIDList;
 
         // Populate generated file data
         for( std::vector< std::string >::iterator it = fileIDList.begin(); it != fileIDList.end(); it++ )
         {
-            pjs::Object jsFileInfo;
-
-            jsFileInfo.set( "id", *it );
-
-            jsFileList.add( jsFileInfo );
+            jsFileIDList.add( *it );
         }
-
-        jsCapObj.set( "fileList", jsFileList );
+        jsCapObj.set( "fileIDList", jsFileIDList );
 
         // Add new capture object to return list
         jsRoot.add( jsCapObj );
@@ -412,19 +271,15 @@ HNSDImageManager::getCaptureJSON( std::string capID )
         jsRoot.set( "fileCount", fileIDList.size() );
 
         // Add a file list array
-        pjs::Array jsFileList;
+        pjs::Array jsFileIDList;
 
         // Populate generated file data
         for( std::vector< std::string >::iterator it = fileIDList.begin(); it != fileIDList.end(); it++ )
         {
-            pjs::Object jsFileInfo;
-
-            jsFileInfo.set( "id", *it );
-
-            jsFileList.add( jsFileInfo );
+            jsFileIDList.add( *it );
         }
-
-        jsRoot.set( "fileList", jsFileList );
+        
+        jsRoot.set( "fileIDList", jsFileIDList );
     }
 
     try 
