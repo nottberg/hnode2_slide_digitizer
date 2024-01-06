@@ -41,6 +41,18 @@ HNSDAction::getRequestCaptureID()
     return m_reqCaptureID;
 }
 
+void
+HNSDAction::setRequestFileID( std::string id )
+{
+    m_reqFileID = id;
+}
+
+std::string
+HNSDAction::getRequestFileID()
+{
+    return m_reqFileID;
+}
+
 bool
 HNSDAction::decodeStartCapture( std::istream& bodyStream )
 {
@@ -149,6 +161,8 @@ HNSDAction::hasRspContent( std::string &contentType )
 
     switch( m_type )
     {
+        case HNSD_AR_TYPE_GET_FILE_LIST:  
+        case HNSD_AR_TYPE_GET_FILE_INFO:
         case HNSD_AR_TYPE_GET_CAPTURE_LIST:  
         case HNSD_AR_TYPE_GET_CAPTURE_INFO:
             contentType = "application/json";
@@ -178,6 +192,8 @@ HNSDAction::generateRspContent( std::ostream &ostr )
 {
     switch( m_type )
     {
+        case HNSD_AR_TYPE_GET_FILE_LIST:
+        case HNSD_AR_TYPE_GET_FILE_INFO:
         case HNSD_AR_TYPE_GET_CAPTURE_LIST:
         case HNSD_AR_TYPE_GET_CAPTURE_INFO:
         {

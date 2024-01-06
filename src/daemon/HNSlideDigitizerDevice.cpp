@@ -530,6 +530,36 @@ HNSlideDigitizerDevice::startAction()
 
     switch( m_curUserAction->getType() )
     {
+        case HNSD_AR_TYPE_GET_FILE_LIST:
+        {
+            // Return list of generated files
+            m_curUserAction->setResponseJSON( m_storageMgr.getFileListJSON() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNSD_AR_TYPE_GET_FILE_INFO:
+        {
+            // Return info about a specific file
+            m_curUserAction->setResponseJSON( m_storageMgr.getFileJSON( m_curUserAction->getRequestFileID() ) );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;
+
+        case HNSD_AR_TYPE_DELETE_FILE:
+        {
+            // Delete a specific file
+            m_storageMgr.deleteFile( m_curUserAction->getRequestFileID() );
+
+            // Done with this request
+            actBits = HNID_ACTBIT_COMPLETE;
+        }
+        break;        
+
         case HNSD_AR_TYPE_START_SINGLE_CAPTURE:
         {
             m_imageMgr.createCaptures( 1, true );
@@ -781,6 +811,106 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         opData->responseSetStatusAndReason( HNR_HTTP_OK );
         return;
     }
+    // GET "/hnode2/slide-digitizer/files"
+    else if( "getFileList" == opID )
+    {
+        std::cout << "=== Get File List Request ===" << std::endl;
+        action.setType( HNSD_AR_TYPE_GET_FILE_LIST );
+    }
+    // GET "/hnode2/slide-digitizer/filees/{fileid}"
+    else if( "getFileInfo" == opID )
+    {
+        std::string fileID;
+
+        if( opData->getParam( "fileid", fileID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "=== Get File Info Request (id: " << fileID << ") ===" << std::endl;
+        action.setType( HNSD_AR_TYPE_GET_FILE_INFO );
+        action.setRequestFileID( fileID );
+    }      
+    // DELETE "/hnode2/slide-digitizer/files/{fileid}"
+    else if( "deleteFile" == opID )
+    {
+        std::string fileID;
+
+        // Make sure zoneid was provided
+        if( opData->getParam( "fileid", fileID ) == true )
+        {
+            // captureid parameter is required
+            opData->responseSetStatusAndReason( HNR_HTTP_BAD_REQUEST );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "=== Delete File Request (id: " << fileID << ") ===" << std::endl;
+
+        action.setType( HNSD_AR_TYPE_DELETE_FILE );
+        action.setRequestFileID( fileID );
+    }
+    // GET "/hnode2/slide-digitizer/files/{fileid}/download"
+    else if( "downloadFile" == opID )
+    {
+        std::string fileID;
+
+        if( opData->getParam( "fileid", fileID ) == true )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "=== Download File Request (id: " << fileID << ") ===" << std::endl;
+
+        std::string filePath;
+        if( m_storageMgr.getLocalFilePath( fileID, filePath ) != HNSDSM_RESULT_SUCCESS )
+        {
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        } 
+
+        std::cout << "=== Download File Request (filepath: " << filePath << ") ===" << std::endl;
+
+        // Stat the image file to get its length
+        struct stat statBuf;
+        if( stat( filePath.c_str(), &statBuf ) != 0 )
+        {
+            std::cout << "ERROR: Could not open image file" << std::endl;
+            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
+            opData->responseSend();
+            return; 
+        }
+
+        std::cout << "Download File Length: " << statBuf.st_size << std::endl;
+
+        // Set response content type
+        opData->responseSetChunkedTransferEncoding( true );
+        opData->responseSetContentType( "image/jpeg" );
+        
+        // Open a file stream
+        std::ifstream jpegIF;
+
+        jpegIF.open( filePath );
+
+        // Render response content
+        std::ostream& ostr = opData->responseSend();
+        try{
+            Poco::StreamCopier::copyStream( jpegIF, ostr );
+        } catch( ... ) {
+            std::cout << "ERROR: Exception while serializing comment" << std::endl;
+        }
+
+        // Request was successful
+        opData->responseSetStatusAndReason( HNR_HTTP_OK );
+
+        jpegIF.close();
+        return;
+    }    
     // POST "/hnode2/slide-digitizer/captures"
     else if( "startCapture" == opID )
     {
@@ -830,65 +960,6 @@ HNSlideDigitizerDevice::dispatchEP( HNodeDevice *parent, HNOperationData *opData
         action.setType( HNSD_AR_TYPE_DELETE_CAPTURE );
         action.setRequestCaptureID( captureID );
     }
-    // GET "/hnode2/slide-digitizer/files/{fileid}/download"
-    else if( "downloadFile" == opID )
-    {
-        std::string fileID;
-
-        if( opData->getParam( "fileid", fileID ) == true )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            opData->responseSend();
-            return; 
-        }
-
-        std::cout << "=== Download File Request (id: " << fileID << ") ===" << std::endl;
-
-        std::string filePath;
-        if( m_storageMgr.getFileLocalPath( fileID, filePath ) != HNSDSM_RESULT_SUCCESS )
-        {
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            opData->responseSend();
-            return; 
-        } 
-
-        std::cout << "=== Download File Request (filepath: " << filePath << ") ===" << std::endl;
-
-        // Stat the image file to get its length
-        struct stat statBuf;
-        if( stat( filePath.c_str(), &statBuf ) != 0 )
-        {
-            std::cout << "ERROR: Could not open image file" << std::endl;
-            opData->responseSetStatusAndReason( HNR_HTTP_INTERNAL_SERVER_ERROR );
-            opData->responseSend();
-            return; 
-        }
-
-        std::cout << "Download File Length: " << statBuf.st_size << std::endl;
-
-        // Set response content type
-        opData->responseSetChunkedTransferEncoding( true );
-        opData->responseSetContentType( "image/jpeg" );
-        
-        // Open a file stream
-        std::ifstream jpegIF;
-
-        jpegIF.open( filePath );
-
-        // Render response content
-        std::ostream& ostr = opData->responseSend();
-        try{
-            Poco::StreamCopier::copyStream( jpegIF, ostr );
-        } catch( ... ) {
-            std::cout << "ERROR: Exception while serializing comment" << std::endl;
-        }
-
-        // Request was successful
-        opData->responseSetStatusAndReason( HNR_HTTP_OK );
-
-        jpegIF.close();
-        return;
-    }    
     else
     {
         // Send back not implemented

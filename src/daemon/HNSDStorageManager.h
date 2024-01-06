@@ -8,7 +8,8 @@
 typedef enum HNSDStorageManagerResultEnum
 {
     HNSDSM_RESULT_SUCCESS,
-    HNSDSM_RESULT_FAILURE
+    HNSDSM_RESULT_FAILURE,
+    HNSDSM_RESULT_NOT_FOUND
 }HNSDSM_RESULT_T;
 
 typedef enum HNSDStorageManagerFileType
@@ -24,24 +25,39 @@ class HNSDStorageFile
        ~HNSDStorageFile();
 
         void setID( std::string id );
+        void setOwnerID( std::string id );
+        void setInstanceID( std::string id );
+        void setPurpose( std::string purpose );
 
         void setType( HNSDSM_FT_T type );
         void setPath( std::string path );
         void setIndex( uint index );
-        void setPurpose( std::string purpose );
-        void setTimestampStr( std::string tsStr );
+
+        void setTimestamp( uint64_t timestamp );
+        void setTimestampFromSystem();
 
         std::string getID();
+        std::string getOwnerID();
+        std::string getInstanceID();                
+        std::string getPurpose();
 
         std::string getFilename();
-        std::string getPurpose();
-        std::string getTimestampStr();
-        std::string getPathAndFile();
+
+        uint64_t getTimestamp();
+        std::string getTimestampAsUSStr();
+
+        std::string getLocalFilePath();
 
         //void getInfo( std::string &fileName, std::string &purpose, std::string &tsStr );
 
     private:
         std::string m_id;
+
+        std::string m_ownerID;
+
+        std::string m_instanceID;
+
+        std::string m_purpose;
 
         HNSDSM_FT_T m_type;
 
@@ -49,30 +65,30 @@ class HNSDStorageFile
 
         uint m_indexNum;
 
-        std::string m_purpose;
-
-        std::string m_timestampStr;
+        uint64_t m_timestamp;
 
 };
 
 class HNSDStorageManager
 {
     public:
-         HNSDStorageManager();
-        ~HNSDStorageManager();
+        HNSDStorageManager();
+       ~HNSDStorageManager();
 
         HNSDSM_RESULT_T start();
         HNSDSM_RESULT_T stop();
 
         HNSDSM_RESULT_T allocateNewFile( std::string ownerID, std::string instanceID, std::string purpose, HNSDStorageFile **filePtr );
 
-        HNSDSM_RESULT_T findFile( std::string ownerID, std::string instanceID, std::string purpose, HNSDStorageFile **filePtr );
+        HNSDSM_RESULT_T findFile( std::string fileID, HNSDStorageFile **filePtr );
 
         virtual std::string getStorageRootPath();
 
-        HNSDSM_RESULT_T getFileLocalPath( std::string fileID, std::string &rstPath );
+        HNSDSM_RESULT_T getLocalFilePath( std::string fileID, std::string &rstPath );
 
         HNSDSM_RESULT_T getFileIDListForOwner( std::string ownerID, std::vector< std::string > &fileIDList );
+
+        void deleteFile( std::string fileID );
 
         std::string getFileListJSON();
         std::string getFileJSON( std::string fileID );
@@ -81,6 +97,8 @@ class HNSDStorageManager
 
         // The root path for storing images
         std::string m_imageStoragePath;
+
+        uint m_nextFileIndex;
 
         std::map< std::string, HNSDStorageFile* > m_fileMap;
 };

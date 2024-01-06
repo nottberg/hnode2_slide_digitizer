@@ -39,8 +39,7 @@ HNSDPSOrthogonalRotate::doesStepApply( HNSDPipelineParameterMap *paramMap )
 HNSDP_RESULT_T
 HNSDPSOrthogonalRotate::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
-	std::string prevOwnerID;
-    std::string prevInstanceID;
+	std::string fileID;
     HNSDStorageFile *filePtr;
     cv::Mat srcImage;
     cv::Mat rotImage;
@@ -48,14 +47,14 @@ HNSDPSOrthogonalRotate::executeInline( HNSDPipelineParameterMap *paramMap, HNSDS
     std::cout << "HNSDPSOrthogonalRotate::executeInline - start" << std::endl;
 
     // Find the output file from previous stage.
-    if( paramMap->getPreviousOutputID( prevOwnerID, prevInstanceID ) != HNSDP_RESULT_SUCCESS )
+    if( paramMap->getPreviousFileID( "output", fileID ) != HNSDP_RESULT_SUCCESS )
         return HNSDP_RESULT_FAILURE;
 
-    if( storageMgr->findFile( prevOwnerID, prevInstanceID, "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+    if( storageMgr->findFile( fileID, &filePtr ) != HNSDSM_RESULT_SUCCESS )
         return HNSDP_RESULT_FAILURE;
 
     // Read image
-    srcImage = cv::imread( filePtr->getPathAndFile(), cv::IMREAD_COLOR );
+    srcImage = cv::imread( filePtr->getLocalFilePath(), cv::IMREAD_COLOR );
 
     if ( !srcImage.data )
     {
@@ -74,13 +73,13 @@ HNSDPSOrthogonalRotate::executeInline( HNSDPipelineParameterMap *paramMap, HNSDS
 	if( storageMgr->allocateNewFile( getOwnerID(), getInstance(), "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
 		return HNSDP_RESULT_FAILURE;
 
-    if( cv::imwrite( filePtr->getPathAndFile(), rotImage ) == false )
+    if( cv::imwrite( filePtr->getLocalFilePath(), rotImage ) == false )
     {
         printf("Failed to write output file\n");
         return HNSDP_RESULT_FAILURE;
     }
 
-    paramMap->updatePreviousOutputID( getOwnerID(), getInstance() );
+    paramMap->updatePreviousFileID( "output", filePtr->getID() );
 
     return HNSDP_RESULT_SUCCESS;
 }
@@ -128,8 +127,7 @@ HNSDPSCrop::doesStepApply( HNSDPipelineParameterMap *paramMap )
 HNSDP_RESULT_T
 HNSDPSCrop::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManager *storageMgr )
 {
-	std::string prevOwnerID;
-    std::string prevInstanceID;
+	std::string fileID;
     HNSDStorageFile *filePtr;
     cv::Mat srcImage;
     cv::Mat rotImage;
@@ -137,14 +135,14 @@ HNSDPSCrop::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManage
     std::cout << "HNSDPSCrop::executeInline - start" << std::endl;
 
     // Find the output file from previous stage.
-    if( paramMap->getPreviousOutputID( prevOwnerID, prevInstanceID ) != HNSDP_RESULT_SUCCESS )
+    if( paramMap->getPreviousFileID( "output", fileID ) != HNSDP_RESULT_SUCCESS )
         return HNSDP_RESULT_FAILURE;
 
-    if( storageMgr->findFile( prevOwnerID, prevInstanceID, "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
+    if( storageMgr->findFile( fileID, &filePtr ) != HNSDSM_RESULT_SUCCESS )
         return HNSDP_RESULT_FAILURE;
 
     // Read image
-    srcImage = cv::imread( filePtr->getPathAndFile(), cv::IMREAD_COLOR );
+    srcImage = cv::imread( filePtr->getLocalFilePath(), cv::IMREAD_COLOR );
 
     if ( !srcImage.data )
     {
@@ -177,13 +175,13 @@ HNSDPSCrop::executeInline( HNSDPipelineParameterMap *paramMap, HNSDStorageManage
 	if( storageMgr->allocateNewFile( getOwnerID(), getInstance(), "output", &filePtr ) != HNSDSM_RESULT_SUCCESS )
 		return HNSDP_RESULT_FAILURE;
 
-    if( cv::imwrite( filePtr->getPathAndFile(), cropImage ) == false )
+    if( cv::imwrite( filePtr->getLocalFilePath(), cropImage ) == false )
     {
         printf("Failed to write output file\n");
         return HNSDP_RESULT_FAILURE;
     }
 
-    paramMap->updatePreviousOutputID( getOwnerID(), getInstance() );
+    paramMap->updatePreviousFileID( "output", filePtr->getID() );
 
     return HNSDP_RESULT_SUCCESS;
 }

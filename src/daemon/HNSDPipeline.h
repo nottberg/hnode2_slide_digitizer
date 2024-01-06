@@ -97,9 +97,9 @@ class HNSDPipelineParameterMap
 
         HNSDP_RESULT_T addParameter( std::string instance, std::string name, HNSDPipelineParameter **rtnParam );
 
-        HNSDP_RESULT_T updatePreviousOutputID( std::string ownerID, std::string instanceID );
+        HNSDP_RESULT_T updatePreviousFileID( std::string purpose, std::string fileID );
 
-        HNSDP_RESULT_T getPreviousOutputID( std::string &ownerID, std::string &instanceID );
+        HNSDP_RESULT_T getPreviousFileID( std::string purpose, std::string &fileID );
 
     private:
 

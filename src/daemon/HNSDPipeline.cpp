@@ -138,37 +138,27 @@ HNSDPipelineParameterMap::addParameter( std::string instance, std::string name, 
 }
 
 HNSDP_RESULT_T
-HNSDPipelineParameterMap::updatePreviousOutputID( std::string ownerID, std::string instanceID )
+HNSDPipelineParameterMap::updatePreviousFileID( std::string purpose, std::string fileID )
 {
     HNSDPipelineParameter *param = NULL;
 
-    if( addParameter( ownerID, "previous_output_ownerID", &param ) != HNSDP_RESULT_SUCCESS )
+    if( addParameter( "previous_file", purpose, &param ) != HNSDP_RESULT_SUCCESS )
         return HNSDP_RESULT_FAILURE;
 
-    param->setActualValue( ownerID );
-
-    if( addParameter( ownerID, "previous_output_instanceID", &param ) != HNSDP_RESULT_SUCCESS )
-        return HNSDP_RESULT_FAILURE;
-
-    param->setActualValue( instanceID );
+    param->setActualValue( fileID );
 
     return HNSDP_RESULT_SUCCESS;
 }
 
 HNSDP_RESULT_T
-HNSDPipelineParameterMap::getPreviousOutputID( std::string &ownerID, std::string &instanceID )
+HNSDPipelineParameterMap::getPreviousFileID( std::string purpose, std::string &fileID )
 {
     HNSDPipelineParameter *param = NULL;
 
-    if( findParameter( ownerID, "previous_output_ownerID", &param ) != HNSDP_RESULT_SUCCESS )
+    if( findParameter( "previous_file", purpose, &param ) != HNSDP_RESULT_SUCCESS )
         return HNSDP_RESULT_FAILURE;
 
-    ownerID = param->getActualValueAsStr();
-
-    if( findParameter( ownerID, "previous_output_instanceID", &param ) != HNSDP_RESULT_SUCCESS )
-        return HNSDP_RESULT_FAILURE;
-
-    instanceID = param->getActualValueAsStr();
+    fileID = param->getActualValueAsStr();
 
     return HNSDP_RESULT_SUCCESS;
 }

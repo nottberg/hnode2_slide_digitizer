@@ -1,3 +1,5 @@
+#include <sys/time.h>
+
 #include <iostream>
 
 #include <Poco/JSON/Object.h>
@@ -26,6 +28,24 @@ HNSDStorageFile::setID( std::string id )
 }
 
 void
+HNSDStorageFile::setOwnerID( std::string id )
+{
+    m_ownerID = id;
+}
+
+void
+HNSDStorageFile::setInstanceID( std::string id )
+{
+    m_instanceID = id;
+}
+
+void
+HNSDStorageFile::setPurpose( std::string purpose )
+{
+    m_purpose = purpose;
+}
+
+void
 HNSDStorageFile::setType( HNSDSM_FT_T type )
 {
     m_type = type;
@@ -44,24 +64,22 @@ HNSDStorageFile::setIndex( uint index )
 }
 
 void
-HNSDStorageFile::setPurpose( std::string purpose )
+HNSDStorageFile::setTimestamp( uint64_t timestamp )
 {
-    m_purpose = purpose;
+    m_timestamp = timestamp;
 }
 
 void
-HNSDStorageFile::setTimestampStr( std::string tsStr )
+HNSDStorageFile::setTimestampFromSystem()
 {
-    m_timestampStr = tsStr;
-}
+    struct timeval tv;
+    uint64_t timestamp = 0;
 
-//void
-//HNSDStorageFile::getInfo( std::string &fileName, std::string &purpose, std::string &tsStr )
-//{
-//    fileName = getFilename();
-//    purpose = m_purpose;
-//    tsStr = m_timestampStr;
-//}
+    // Get a timestamp in microseconds
+    gettimeofday( &tv,NULL );
+
+    m_timestamp = 1000000 * tv.tv_sec + tv.tv_usec;
+}
 
 std::string 
 HNSDStorageFile::getID()
@@ -69,17 +87,16 @@ HNSDStorageFile::getID()
     return m_id;
 }
 
-std::string 
-HNSDStorageFile::getFilename()
+std::string
+HNSDStorageFile::getOwnerID()
 {
-    char tmpFN[256];
-    std::string rtnStr;
+    return m_ownerID;
+}
 
-    sprintf( tmpFN, "hnsd_%s_%u_%s.jpg", m_timestampStr.c_str(), m_indexNum, m_purpose.c_str() );
-    
-    rtnStr = tmpFN;
-
-    return rtnStr;
+std::string
+HNSDStorageFile::getInstanceID()
+{
+    return m_instanceID;
 }
 
 std::string
@@ -88,14 +105,37 @@ HNSDStorageFile::getPurpose()
     return m_purpose;
 }
 
-std::string
-HNSDStorageFile::getTimestampStr()
+std::string 
+HNSDStorageFile::getFilename()
 {
-    return m_timestampStr;
+    char tmpFN[256];
+    std::string rtnStr;
+
+    sprintf( tmpFN, "hnsd_%s_%u_%s.jpg", getTimestampAsUSStr().c_str(), m_indexNum, m_purpose.c_str() );
+    
+    rtnStr = tmpFN;
+
+    return rtnStr;
+}
+
+uint64_t
+HNSDStorageFile::getTimestamp()
+{
+    return m_timestamp;
+}
+
+std::string
+HNSDStorageFile::getTimestampAsUSStr()
+{
+    char tmpStr[64];
+
+    sprintf( tmpStr, "%lu", m_timestamp );
+
+    return tmpStr;
 }
 
 std::string 
-HNSDStorageFile::getPathAndFile()
+HNSDStorageFile::getLocalFilePath()
 {
     std::string fullPath;
 
@@ -106,7 +146,7 @@ HNSDStorageFile::getPathAndFile()
 
 HNSDStorageManager::HNSDStorageManager()
 {
-
+    m_nextFileIndex = 0;
 }
 
 HNSDStorageManager::~HNSDStorageManager()
@@ -139,17 +179,49 @@ HNSDStorageManager::getStorageRootPath()
 HNSDSM_RESULT_T
 HNSDStorageManager::allocateNewFile( std::string ownerID, std::string instanceID, std::string purpose, HNSDStorageFile **filePtr )
 {
+    char tmpStr[64];
+    HNSDStorageFile *newFile = new HNSDStorageFile;
+
+    // Create a new id string
+    sprintf( tmpStr, "smf%u", m_nextFileIndex );
+
+    newFile->setID( tmpStr );
+
+    newFile->setTimestampFromSystem();
+
+    newFile->setOwnerID( ownerID );
+    newFile->setInstanceID( instanceID );
+    newFile->setPurpose( purpose );
+    newFile->setIndex( m_nextFileIndex );
+    
+    newFile->setPath( getStorageRootPath() );
+
+    newFile->setType( HNSDSM_FT_JPEG );
+
+    m_nextFileIndex += 1;
+
+    m_fileMap.insert(std::pair< std::string, HNSDStorageFile* >( newFile->getID(), newFile ) );
+
+    *filePtr = newFile;
+
     return HNSDSM_RESULT_SUCCESS;
 }
 
 HNSDSM_RESULT_T
-HNSDStorageManager::findFile( std::string ownerID, std::string instanceID, std::string purpose, HNSDStorageFile **filePtr )
+HNSDStorageManager::findFile( std::string fileID, HNSDStorageFile **filePtr )
 {
+    std::map< std::string, HNSDStorageFile* >::iterator it = m_fileMap.find( fileID );
+
+    if( it == m_fileMap.end() )
+        return HNSDSM_RESULT_NOT_FOUND;
+
+    *filePtr = it->second;
+
     return HNSDSM_RESULT_SUCCESS;
 }
 
 HNSDSM_RESULT_T
-HNSDStorageManager::getFileLocalPath( std::string fileID, std::string &rstPath )
+HNSDStorageManager::getLocalFilePath( std::string fileID, std::string &rstPath )
 {
     rstPath.clear();
 
@@ -159,8 +231,19 @@ HNSDStorageManager::getFileLocalPath( std::string fileID, std::string &rstPath )
 HNSDSM_RESULT_T
 HNSDStorageManager::getFileIDListForOwner( std::string ownerID, std::vector< std::string > &fileIDList )
 {
+    for( std::map< std::string, HNSDStorageFile* >::iterator it = m_fileMap.begin(); it != m_fileMap.end(); it++ )
+    {
+        if( it->second->getOwnerID() == ownerID )
+            fileIDList.push_back( it->second->getID() );
+    }
 
     return HNSDSM_RESULT_SUCCESS;
+}
+
+void
+HNSDStorageManager::deleteFile( std::string fileID )
+{
+
 }
 
 std::string
@@ -183,7 +266,7 @@ HNSDStorageManager::getFileListJSON()
         jsFileObj.set( "id", filePtr->getID() );
         jsFileObj.set( "purpose", filePtr->getPurpose() );
         jsFileObj.set( "filename", filePtr->getFilename() );
-        jsFileObj.set( "timestamp", filePtr->getTimestampStr() );
+        jsFileObj.set( "timestamp", filePtr->getTimestampAsUSStr() );
 
         // Add new capture object to return list
         jsRoot.add( jsFileObj );
@@ -219,7 +302,7 @@ HNSDStorageManager::getFileJSON( std::string fileID )
         jsRoot.set( "id", filePtr->getID() );
         jsRoot.set( "purpose", filePtr->getPurpose() );
         jsRoot.set( "filename", filePtr->getFilename() );
-        jsRoot.set( "timestamp", filePtr->getTimestampStr() );
+        jsRoot.set( "timestamp", filePtr->getTimestampAsUSStr() );
     }
 
     try 

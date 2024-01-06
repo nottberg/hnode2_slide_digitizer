@@ -18,7 +18,10 @@ typedef enum HNSDActionRequestType
     HNSD_AR_TYPE_START_SINGLE_CAPTURE  = 1,
     HNSD_AR_TYPE_GET_CAPTURE_LIST      = 2,
     HNSD_AR_TYPE_GET_CAPTURE_INFO      = 3,
-    HNSD_AR_TYPE_DELETE_CAPTURE        = 4
+    HNSD_AR_TYPE_DELETE_CAPTURE        = 4,
+    HNSD_AR_TYPE_GET_FILE_LIST         = 5,
+    HNSD_AR_TYPE_GET_FILE_INFO         = 6,
+    HNSD_AR_TYPE_DELETE_FILE           = 7
 }HNSD_AR_TYPE_T;
 
 
@@ -56,6 +59,9 @@ class HNSDAction : public HNReqWaitAction
         void setRequestCaptureID( std::string id );
         std::string getRequestCaptureID();
 
+        void setRequestFileID( std::string id );
+        std::string getRequestFileID();
+
         HNSD_AR_TYPE_T getType();
 
         bool hasNewObject( std::string &newID );
@@ -70,6 +76,8 @@ class HNSDAction : public HNReqWaitAction
         std::string m_newID;
 
         std::string m_reqCaptureID;
+
+        std::string m_reqFileID;
 
         std::string m_rspStr;
 

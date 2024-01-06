@@ -529,7 +529,9 @@ HNSDPSHardwareSingleCapture::createHardwareOperation( HNSDPipelineParameterMap *
 
     crPtr->setImageFormat( CS_STILLMODE_YUV420, 4624, 3472 );
 
-    crPtr->setFileAndPath( filePtr->getPathAndFile() );
+    crPtr->setFileAndPath( filePtr->getLocalFilePath() );
+
+    params->updatePreviousFileID( "output", filePtr->getID() );
 
 	*rtnPtr = opPtr;
 
@@ -543,8 +545,6 @@ HNSDPSHardwareSingleCapture::completedHardwareOperation(  HNSDPipelineParameterM
 
 	delete *opPtr;
 	*opPtr = NULL;
-
-    paramMap->updatePreviousOutputID( getOwnerID(), getInstance() );
 
 	return HNSDP_RESULT_SUCCESS;
 }
